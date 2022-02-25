@@ -1,11 +1,11 @@
 import zipfile
 from osgeo import gdal
 from pathlib import Path
-from src.floodsens._tile import multiraster_tiling
-from src.floodsens._download import get_copernicus_dem
-from src.floodsens._process import flow_accumulation, hand, slope, twi
-from src.floodsens._reproject import reproject_set
-from src.floodsens.constants import EXTRACT_DICT
+from floodsens._tile import multiraster_tiling
+from floodsens._download import get_copernicus_dem
+from floodsens._process import flow_accumulation, hand, slope, twi
+from floodsens._reproject import reproject_set
+from floodsens.constants import EXTRACT_DICT
 
 
 def _rm_tree(path):
