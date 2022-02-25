@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "floodsens",
-    version = "0.0.2",
+    version = "0.0.4",
     author = "Ben Gaffinet",
     author_email = "ben@gaffinet.lu",
     packages = find_packages(include=['src/floodsens'], exclude=['tests', 'notebooks']),
@@ -12,7 +12,7 @@ setup(
         'gdal',
         'rasterio',
         'boto3',
-        'botocore'
+        'botocore',
         'pyproj',
         'pysheds==0.2.7',
         'numpy',
