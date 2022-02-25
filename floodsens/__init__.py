@@ -1,2 +1,2 @@
-import src.floodsens.inference as inference
-import src.floodsens.preprocessing as preprocessing
+import floodsens.inference as inference
+import floodsens.preprocessing as preprocessing
