@@ -5,7 +5,7 @@ setup(
     version = "0.0.2",
     author = "Ben Gaffinet",
     author_email = "ben@gaffinet.lu",
-    packages = find_packages(exclude=['tests', 'notebooks']),
+    packages = find_packages(include=['src/floodsens'], exclude=['tests', 'notebooks']),
     include_package_data = True,
     test_suite = 'tests',
     install_requires = [
