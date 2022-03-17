@@ -8,13 +8,14 @@ import numpy as np
 from osgeo import gdal
 from pathlib import Path
 
-def choose_model(cuda=True):
+def choose_model(cuda=True, model_idx=None):
     model_paths = [x for x in Path('models').iterdir() if x.is_dir()]
-    print("Available models:\n", *[f"\t{k+1}) {x.name}\n" for k, x in enumerate(model_paths)])
-    model_idx = int(input("Type Number of model to load it\n"))
+    if model_idx is None:
+        print("Available models:\n", *[f"\t{k+1}) {x.name}\n" for k, x in enumerate(model_paths)])
+        model_idx = int(input("Type Number of model to load it\n"))
 
-    model_path = model_paths[model_idx-1]/"model.pth.tar"
-    
+    model_path = model_paths[int(model_idx)-1]/"model.pth.tar"
+
     if cuda: model_dict = torch.load(model_path)
     else: model_dict = torch.load(model_path, map_location=torch.device('cpu'))
     
@@ -83,7 +84,8 @@ def run_inference(model_dict, input_tiles_folder, batch_size = 16):
     
     return df
 
-def create_map(tiles_df, out_dir=None): # TODO Clean out directories used
+# TODO Clean out directories used
+def create_map(tiles_df, out_dir=None): 
     NoData_value = -9999
     if out_dir is None: # TODO Not working yet
         out_dir = Path('map/') 
