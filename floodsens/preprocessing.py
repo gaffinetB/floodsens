@@ -4,7 +4,7 @@ from pathlib import Path
 from floodsens._tile import multiraster_tiling
 from floodsens._download import get_copernicus_dem
 from floodsens._process import flow_accumulation, hand, slope, twi
-from floodsens._reproject import reproject_set
+from floodsens._reproject import reproject_set, reproject_from_raster
 from floodsens.constants import EXTRACT_DICT
 
 
@@ -64,6 +64,10 @@ def download_dem(s2_path, out_dir):
     dem_path = get_copernicus_dem(s2_path, out_dir)
     return dem_path
 
+def clip_dem(dem_path, target_raster_path, project_dir):
+    reproject_from_raster(dem_path, target_raster_path, -9999, project_dir, xRes=30.0, yRes=30.0)
+    return dem_path
+
 def process_dem(dem_path, out_dir, return_type='list'):
     dem_path = Path(dem_path)
     
@@ -100,12 +104,14 @@ def stack(out_dir, *input_paths):
     options = gdal.BuildVRTOptions(separate=True)
     to_merge = [str(x) for x in input_paths]
     vrt_path = out_dir/f"{out_dir.stem}.vrt"
-    
+
     out_path = out_dir/f"{out_dir.stem}.tif"
     vrt = gdal.BuildVRT(str(vrt_path), to_merge, options=options)
     gdal.Translate(str(out_path), vrt)
-    vrt_path.unlink()
-    return out_path    
+
+    if vrt_path.exists(): vrt_path.unlink()
+
+    return out_path
 
 def tile(*raster_paths, tile_size=244, data_type="stacked"):
     tile_dir = multiraster_tiling(tile_size, *raster_paths, data_type=data_type)
@@ -121,9 +127,12 @@ def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delet
 
     dem_path = download_dem(target_raster_path, project_dir)
 
+    dem_path = clip_dem(dem_path, target_raster_path, project_dir)
+
     dem_paths_list = process_dem(dem_path, project_dir)
 
-    reprojected_raster_paths = reproject(*dem_paths_list, target_raster_path = target_raster_path)
+    all_paths_list = s2_paths_list + dem_paths_list
+    reprojected_raster_paths = reproject(*all_paths_list, target_raster_path = target_raster_path)
 
     stacked_path = stack(project_dir, *reprojected_raster_paths)
 

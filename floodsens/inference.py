@@ -1,6 +1,7 @@
 import tifffile
 import pickle
 import torch
+import math
 import glob
 import floodsens.model
 import pandas as pd
@@ -22,7 +23,7 @@ def choose_model(cuda=True, model_idx=None):
     return model_dict
 
 # TODO Careful with directories
-def run_inference(model_dict, input_tiles_folder, batch_size = 16):
+def run_inference(model_dict, input_tiles_folder, mini_batch_size = 4):
     means, stds = model_dict['model_means'], model_dict['model_stds']
     model = floodsens.model.MainNET(len(means), 1)
     model.load_state_dict(model_dict['model_state_dict'])
