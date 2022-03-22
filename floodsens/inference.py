@@ -46,7 +46,8 @@ def run_inference(model_dict, input_tiles_folder, mini_batch_size = 4):
 
     # Process mini batches
     df = pd.DataFrame(columns=['input_tiles', 'output_tiles'])
-    for mini_batch in mini_batches:
+    num_mini_batches = len(mini_batches)
+    for k, mini_batch in enumerate(mini_batches):
         batch = []
         for tile in mini_batch:
             image = tifffile.imread(tile)
@@ -82,7 +83,9 @@ def run_inference(model_dict, input_tiles_folder, mini_batch_size = 4):
             output_array.append(str(output_path))
         
         df = df.append(pd.DataFrame.from_dict({'input_tiles': input_array, 'output_tiles': output_array}))
-    
+
+        print(f"{100*k/num_mini_batches:.2f}% Completion", end='\r')
+
     return df
 
 # TODO Clean out directories used

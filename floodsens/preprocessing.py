@@ -122,21 +122,24 @@ def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delet
     if extract_dict is None:
         extract_dict = EXTRACT_DICT
     s2_paths_list = extract(s2_zip_path, project_dir, extract_dict)
-
     target_raster_path = s2_paths_list[0]
+    print("Sentinel-2 rasters extracted.")
 
     dem_path = download_dem(target_raster_path, project_dir)
-
+    print("DEM downloaded.")
     dem_path = clip_dem(dem_path, target_raster_path, project_dir)
-
     dem_paths_list = process_dem(dem_path, project_dir)
-
     all_paths_list = s2_paths_list + dem_paths_list
+    print("DEM clipped.")
+
     reprojected_raster_paths = reproject(*all_paths_list, target_raster_path = target_raster_path)
+    print("All rasters reprojected.")
 
     stacked_path = stack(project_dir, *reprojected_raster_paths)
-
+    print("All rasters stacked.")
+    
     tile_dir = tile(stacked_path)
+    print("Tiling completed.")
 
     if delete_all:
         for s2_path in s2_paths_list:
@@ -146,6 +149,7 @@ def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delet
             Path(dem_path).unlink()
         
         Path(stacked_path).unlink()
+        print("Unnecessary project files removed.")
 
 
     return tile_dir
