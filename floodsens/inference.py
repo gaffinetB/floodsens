@@ -2,30 +2,25 @@ import tifffile
 import pickle
 import torch
 import math
-import glob
-import floodsens.model
+from floodsens.model import MainNET
 import pandas as pd
 import numpy as np
 from osgeo import gdal
 from pathlib import Path
 
-def choose_model(cuda=True, model_idx=None):
+def choose_model():
     model_paths = [x for x in Path('models').iterdir() if x.is_dir()]
-    if model_idx is None:
-        print("Available models:\n", *[f"\t{k+1}) {x.name}\n" for k, x in enumerate(model_paths)])
-        model_idx = int(input("Type Number of model to load it\n"))
-
+    print("Available models:\n", *[f"\t{k+1}) {x.name}\n" for k, x in enumerate(model_paths)])
+    model_idx = int(input("Type Number of model to load it\n"))
     model_path = model_paths[int(model_idx)-1]/"model.pth.tar"
+    return model_path
 
-    if cuda: model_dict = torch.load(model_path)
-    else: model_dict = torch.load(model_path, map_location=torch.device('cpu'))
+def run_inference(model_path, input_tiles_folder, mini_batch_size = 4, cuda=True):
+    if cuda is True: model_dict = torch.load(model_path)
+    else: model_dict = torch.load(model_path, map_location=torch.device('cpu'))    
     
-    return model_dict
-
-# TODO Careful with directories
-def run_inference(model_dict, input_tiles_folder, mini_batch_size = 4):
     means, stds = model_dict['model_means'], model_dict['model_stds']
-    model = floodsens.model.MainNET(len(means), 1)
+    model = MainNET(len(means), 1)
     model.load_state_dict(model_dict['model_state_dict'])
     model.eval()
 
@@ -45,7 +40,6 @@ def run_inference(model_dict, input_tiles_folder, mini_batch_size = 4):
         mini_batches.append(mini_batch)
 
     # Process mini batches
-    df = pd.DataFrame(columns=['input_tiles', 'output_tiles'])
     num_mini_batches = len(mini_batches)
     for k, mini_batch in enumerate(mini_batches):
         batch = []
@@ -81,22 +75,21 @@ def run_inference(model_dict, input_tiles_folder, mini_batch_size = 4):
 
             input_array.append(str(input_tiles_folder/f"{input_name}.tif"))
             output_array.append(str(output_path))
-        
-        df = df.append(pd.DataFrame.from_dict({'input_tiles': input_array, 'output_tiles': output_array}))
 
         print(f"{100*k/num_mini_batches:.2f}% Completion", end='\r')
 
-    return df
+    return output_tiles_folder
 
-# TODO Clean out directories used
-def create_map(tiles_df, out_dir=None): 
+def create_map(tile_dir, inferred_dir, out_dir='map/', out_path='merged_map.tif'):
+    input_tiles = [str(x) for x in tile_dir.iterdir()]
+    out_tiles = [str(x) for x in inferred_dir.iterdir()]
+    tiles_dict = {'input_tiles': input_tiles, 'output_tiles': out_tiles}
+    tiles_df = pd.DataFrame.from_dict(tiles_dict)
+
     NoData_value = -9999
-    if out_dir is None: # TODO Not working yet
-        out_dir = Path('map/') 
-        out_dir.mkdir(exist_ok=True)
-    else: 
-        out_dir = Path(out_dir)
-        out_dir.mkdir(exist_ok=True)
+
+    out_dir = Path(out_dir)
+    out_dir.mkdir(exist_ok=True)
 
     for row in tiles_df.iterrows():
         input_tile = row[1]['input_tiles']
@@ -122,14 +115,12 @@ def create_map(tiles_df, out_dir=None):
         band.WriteArray(inferred_map_array)
         out_ds = None
 
-    output_map_path = out_dir/'merged_map.tif'
     map_tiles =  [str(x) for x in out_dir.iterdir()] # glob.glob('*map.tif')
     vrt_options = gdal.BuildVRTOptions()
     map_vrt = gdal.BuildVRT('inferred_map.vrt', map_tiles, options=vrt_options)
-    gdal.Translate(str(output_map_path), map_vrt)
+    gdal.Translate(str(out_path), map_vrt)
 
     # TODO Include below options cleanly in gdal.Translate() call
     # subprocess.call(['gdal_translate', '-of', 'COG', 'map.vrt', directory/'map.tif', '--config', 'CHECK_DISK_FREE_SPACE', 'NO'])
-    output_map_ds = gdal.Open(str(output_map_path))
     
-    return output_map_ds
+    return out_path
