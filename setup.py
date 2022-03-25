@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "floodsens",
-    version = "0.0.10",
+    version = "0.1.1",
     author = "Ben Gaffinet",
     author_email = "ben@gaffinet.lu",
     packages = find_packages(include=['floodsens'], exclude=['tests', 'notebooks']),
@@ -26,7 +26,7 @@ setup(
     license = 'GPLv3',
     keywords = "flood gis sentinel copernicus ai",
     url = "https://github.com/gaffinetB/floodsens",
-    classifiers = ['Development Status :: 1 - Planning',
+    classifiers = ['Development Status :: 2 - Pre-Alpha',
                    'Topic :: Scientific/Engineering :: Artificial Intelligence',
                    'Topic :: Scientific/Engineering :: GIS',
                    'Intended Audience :: Science/Research',

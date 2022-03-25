@@ -1,3 +1,4 @@
+import time
 import zipfile
 from osgeo import gdal
 from pathlib import Path
@@ -118,25 +119,37 @@ def tile(*raster_paths, tile_size=244, data_type="stacked"):
     return tile_dir
 
 def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delete_all=True):
+    Mtic, mtic = time.time(), time.time()
     
+    print(f"o---o---o---o---o---o---o\tNot Started \t\t\t(0/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
     if extract_dict is None:
         extract_dict = EXTRACT_DICT
     s2_paths_list = extract(s2_zip_path, project_dir, extract_dict)
-
     target_raster_path = s2_paths_list[0]
+    print(f"•---o---o---o---o---o---o\tSentinel bands extracted \t(1/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+    mtic=time.time()
 
     dem_path = download_dem(target_raster_path, project_dir)
-
+    print(f"•---•---o---o---o---o---o\tDEM downloaded \t\t\t(2/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+    mtic=time.time()
     dem_path = clip_dem(dem_path, target_raster_path, project_dir)
-
+    print(f"•---•---•---o---o---o---o\tDEM clipped \t\t\t(3/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+    mtic=time.time()
     dem_paths_list = process_dem(dem_path, project_dir)
-
     all_paths_list = s2_paths_list + dem_paths_list
+    print(f"•---•---•---•---o---o---o\tDEM processed \t\t\t(4/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+    mtic=time.time()
+
     reprojected_raster_paths = reproject(*all_paths_list, target_raster_path = target_raster_path)
+    print(f"•---•---•---•---•---o---o\tReprojections completed \t(5/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+    mtic=time.time()
 
     stacked_path = stack(project_dir, *reprojected_raster_paths)
-
+    print(f"•---•---•---•---•---•---o\tAll bands stacked \t\t(6/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+    mtic=time.time()
+    
     tile_dir = tile(stacked_path)
+    print(f"•---•---•---•---•---•---•\tTiles ready for inference \t(7/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
 
     if delete_all:
         for s2_path in s2_paths_list:
@@ -146,6 +159,7 @@ def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delet
             Path(dem_path).unlink()
         
         Path(stacked_path).unlink()
+        print("Unnecessary project files removed.")
 
 
     return tile_dir
