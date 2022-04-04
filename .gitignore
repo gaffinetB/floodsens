@@ -133,4 +133,6 @@ dmypy.json
 models/
 data/
 dist/
+map/
 *.ipynb
+*.vrt

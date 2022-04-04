@@ -58,8 +58,9 @@ class Project():
         if not inferred_dir.exists(): inferred_dir = None
         project.inferred_dir = inferred_dir
 
-        inferred_path = Path(root)/'merged_map.tif'
+        inferred_path = Path(root)/'map'/'merged_map.tif'
         if not inferred_path.exists(): inferred_path = None
+        project.inferred_path = inferred_path
 
         return project
 
@@ -80,10 +81,13 @@ class Project():
         self.inferred_dir = inference.run_inference(self.model_path, self.tile_dir, cuda=self.cuda)
 
     def save_map(self, out_path=None):
-        out_dir = Path(self.root)/'tiles'/'map'
-        if out_path is None: out_path = Path(self.root)/'merged_map.tif'
-        self.inferred_path = inference.create_map(self.tile_dir, 
+        if out_path is None:
+            self.inferred_path = inference.create_map(self.tile_dir, self.inferred_dir)
+        
+        else:
+            out_path = Path(out_path)
+            self.inferred_path = inference.create_map(self.tile_dir, 
                                                     self.inferred_dir, 
-                                                    out_dir=out_dir, 
-                                                    out_path=out_path)
+                                                    out_dir=out_path.parent, 
+                                                    out_name=out_path.name)
         

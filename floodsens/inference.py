@@ -80,7 +80,7 @@ def run_inference(model_path, input_tiles_folder, mini_batch_size = 4, cuda=True
 
     return output_tiles_folder
 
-def create_map(tile_dir, inferred_dir, out_dir='map/', out_path='merged_map.tif'):
+def create_map(tile_dir, inferred_dir, out_dir='map/', out_name='merged_map.tif'):
     input_tiles = [str(x) for x in tile_dir.iterdir()]
     out_tiles = [str(x) for x in inferred_dir.iterdir()]
     tiles_dict = {'input_tiles': input_tiles, 'output_tiles': out_tiles}
@@ -90,6 +90,7 @@ def create_map(tile_dir, inferred_dir, out_dir='map/', out_path='merged_map.tif'
 
     out_dir = Path(out_dir)
     out_dir.mkdir(exist_ok=True)
+    out_path = out_dir/out_name
 
     for row in tiles_df.iterrows():
         input_tile = row[1]['input_tiles']
