@@ -83,11 +83,10 @@ class Project():
     def save_map(self, out_path=None):
         if out_path is None:
             self.inferred_path = inference.create_map(self.tile_dir, self.inferred_dir)
-        
+
         else:
             out_path = Path(out_path)
             self.inferred_path = inference.create_map(self.tile_dir, 
                                                     self.inferred_dir, 
                                                     out_dir=out_path.parent, 
                                                     out_name=out_path.name)
-        
