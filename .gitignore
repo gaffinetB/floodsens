@@ -136,3 +136,5 @@ dist/
 map/
 *.ipynb
 *.vrt
+test_run.py
+*.tif
