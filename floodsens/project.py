@@ -4,10 +4,16 @@ from pathlib import Path
 
 
 class Project():
-    def __init__(self, root, zip_path, tile_dir=None, inferred_dir=None, 
+    def __init__(self, root, zip_paths, tile_dir=None, inferred_dir=None, 
                     inferred_path=None, model_path=None, cuda=True):
         self.root = Path(root)
-        self.zip_path = Path(zip_path) # TODO How to handle multiple Sentinel images?
+
+        if isinstance(zip_paths, str):
+            self.zip_paths = [zip_paths]
+        elif isinstance(zip_paths, list):
+            self.zip_paths = zip_paths
+        else:
+            raise TypeError("zip_paths must be a string or a list of strings")
 
         if model_path is None: self.model_path = None
         else: self.model_path = model_path
@@ -35,7 +41,7 @@ class Project():
         
 
         repr_str = f'Project Folder:\t\t{self.root}\n'
-        repr_str +=f'Sentinel Archive:\t{self.zip_path}\n'
+        repr_str +=f'Sentinel Archives:\t{len(self.zip_paths)}\n'
         repr_str +=f'Model:\t\t\t{model_path}\n'
         repr_str +=f'Preprocessed Tiles:\t{tile_dir}\n'
         repr_str +=f'Inferred Tiles:\t\t{inferred_dir}\n'
@@ -65,7 +71,10 @@ class Project():
         return project
 
     def default_preprocessing(self):
-        self.tile_dir = preprocessing.run_default_preprocessing(self.root, self.zip_path)
+        if len(self.zip_paths) == 1:
+            self.tile_dir = preprocessing.run_default_preprocessing(self.root, self.zip_paths[0])
+        else: # TODO Implement multiple zip files preprocessing
+            self.tile_dir = preprocessing.run_default_preprocessing(self.root, self.zip_paths)
 
     def choose_model(self):
         model_paths = [x for x in Path('models').iterdir() if x.is_dir()]       

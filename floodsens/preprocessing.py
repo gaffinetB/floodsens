@@ -61,7 +61,11 @@ def extract(zip_path, project_dir, extract_dict):
         _rm_tree(project_dir/f"{zip_path.stem}.SAFE")
     except:
         print(f"No folder found to remove at {project_dir/f'{zip_path.stem}.SAFE'}")
-        
+    
+    if len(extracted_paths) == 0:
+        print(f"Prameters used: {extract_dict}, files extracted: {extracted_paths}, files in zip: {filtered_files}")
+        raise ValueError(f"No files extracted from {zip_path}")
+
     return extracted_paths
 
 def download_dem(s2_path, out_dir):
