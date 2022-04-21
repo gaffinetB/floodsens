@@ -28,6 +28,7 @@ class Project():
         else: self.inferred_path = Path(inferred_path)
 
         self.cuda = cuda
+        self.clean = True
 
     def __repr__(self):
         if self.tile_dir is None: tile_dir = "(not set)" 
@@ -70,11 +71,11 @@ class Project():
 
         return project
 
-    def default_preprocessing(self):
+    def default_preprocessing(self, set_type='inference'):
         if len(self.zip_paths) == 1:
-            self.tile_dir = preprocessing.run_default_preprocessing(self.root, self.zip_paths[0])
-        else: # TODO Implement multiple zip files preprocessing
-            self.tile_dir = preprocessing.run_default_preprocessing(self.root, self.zip_paths)
+            self.tile_dir = preprocessing.run_default_preprocessing(self.root, self.zip_paths[0], delete_all=self.clean)
+        else:
+            self.tile_dir = preprocessing.run_multiple_default_preprocessing(self.root, self.zip_paths, delete_all=self.clean, set_type=set_type)
 
     def choose_model(self):
         model_paths = [x for x in Path('models').iterdir() if x.is_dir()]       
