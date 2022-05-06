@@ -3,7 +3,7 @@ import zipfile
 from osgeo import gdal
 from osgeo import gdalconst
 from pathlib import Path
-from floodsens._tile import multiraster_tiling
+from floodsens._tile import singleraster_tiling
 from floodsens._download import get_copernicus_dem
 from floodsens._process import flow_accumulation, hand, slope, twi
 from floodsens._reproject import reproject_set, reproject_from_raster
@@ -148,7 +148,7 @@ def merge(out_path, *input_paths):
     return out_path
 
 def tile(*raster_paths, tile_size=244, data_type="stacked"):
-    tile_dir = multiraster_tiling(tile_size, *raster_paths, data_type=data_type)
+    tile_dir = singleraster_tiling(tile_size, *raster_paths, data_type=data_type)
     return tile_dir
 
 def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delete_all=True):
@@ -261,7 +261,7 @@ def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_dict=N
         print(f"•---•---•---•---•---•---•\tStacked Paths merged \t\t({7*num_images+1}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
         mtic=time.time()
 
-        tile_dir = multiraster_tiling(244, merged_path, data_type="stacked")
+        tile_dir = singleraster_tiling(244, merged_path, data_type="stacked")
         print(f"•---•---•---•---•---•---•\tTiles ready for inference \t({7*num_images+2}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
 
     elif set_type == 'training':
@@ -270,8 +270,8 @@ def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_dict=N
         print(f"•---•---•---•---•---•---•\tStacked Paths merged \t\t({7*num_images+1}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
         mtic=time.time()
 
-        s2_tile_dir = multiraster_tiling(244, merged_s2_path, data_type="S2-stack")
-        dem_tile_dir = multiraster_tiling(244, merged_dem_path, data_type="DEM-stack")
+        s2_tile_dir = singleraster_tiling(244, merged_s2_path, data_type="S2-stack")
+        dem_tile_dir = singleraster_tiling(244, merged_dem_path, data_type="DEM-stack")
         tile_dir = (s2_tile_dir, dem_tile_dir)
         print(f"•---•---•---•---•---•---•\tTiles ready for inference \t({7*num_images+2}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
 
