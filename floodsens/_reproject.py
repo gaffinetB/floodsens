@@ -1,6 +1,7 @@
 from osgeo import gdal
-import numpy as np
+from osgeo import gdalconst
 from pathlib import Path
+import numpy as np
 
 
 def _get_information(raster_path):
@@ -52,7 +53,7 @@ def _get_information(raster_path):
 
     return information
 
-def reproject_from_parameters(source_path, target_information, target_nan, out_dir=None, xRes=None, yRes=None):
+def reproject_from_parameters(source_path, target_information, target_nan, out_dir=None, xRes=None, yRes=None, output_type=gdalconst.GDT_Float32):
     """
     Reproject raster at source_path based on information provided through 
     target information which is a dictionary.
@@ -72,7 +73,8 @@ def reproject_from_parameters(source_path, target_information, target_nan, out_d
                                      yRes=yRes,
                                      outputBounds=target_information["output_bounds"],
                                      srcNodata=source_information["nan_value"],
-                                     dstNodata=target_nan)
+                                     dstNodata=target_nan,
+                                     outputType=output_type)
 
     out_path = out_dir/f"{source_path.name}"
 
@@ -82,7 +84,7 @@ def reproject_from_parameters(source_path, target_information, target_nan, out_d
 
     return out_path
 
-def reproject_from_raster(source_path, target_path, target_nan, out_dir=None, xRes=None, yRes=None):
+def reproject_from_raster(source_path, target_path, target_nan, out_dir=None, xRes=None, yRes=None, output_type=gdalconst.GDT_Float32):
     """
     Reprojects raster at source_path and reprojects in using information from
     raster at target_path.
@@ -98,15 +100,19 @@ def reproject_from_raster(source_path, target_path, target_nan, out_dir=None, xR
         target_nan = np.nan
 
     target_information = _get_information(target_path)
-    out_path = reproject_from_parameters(source_path, target_information, target_nan, out_dir=out_dir, xRes=xRes, yRes=yRes)
+    out_path = reproject_from_parameters(source_path, target_information, target_nan, out_dir=out_dir, xRes=xRes, yRes=yRes, output_type=output_type)
     return out_path
 
-def reproject_set(target_path, nan, *raster_paths):
+def reproject_set(target_path, nan, *raster_paths, output_type=gdalconst.GDT_Float32):
     
     reprojected_rasters = []
     for raster_path in raster_paths:
         reprojected_path = reproject_from_raster(
-            raster_path, target_path, nan, out_dir=Path(raster_path).parent)
+                                            raster_path, 
+                                            target_path, 
+                                            nan, 
+                                            out_dir=Path(raster_path).parent,
+                                            output_type=output_type)
         reprojected_rasters.append(str(reprojected_path))
     
     return reprojected_rasters

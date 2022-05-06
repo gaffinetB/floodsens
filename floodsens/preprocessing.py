@@ -1,8 +1,9 @@
 import time
 import zipfile
 from osgeo import gdal
+from osgeo import gdalconst
 from pathlib import Path
-from floodsens._tile import multiraster_tiling
+from floodsens._tile import singleraster_tiling
 from floodsens._download import get_copernicus_dem
 from floodsens._process import flow_accumulation, hand, slope, twi
 from floodsens._reproject import reproject_set, reproject_from_raster
@@ -57,7 +58,14 @@ def extract(zip_path, project_dir, extract_dict):
 
     extracted_paths.sort()
 
-    _rm_tree(project_dir/f"{zip_path.stem}.SAFE")
+    try: 
+        _rm_tree(project_dir/f"{zip_path.stem}.SAFE")
+    except:
+        print(f"No folder found to remove at {project_dir/f'{zip_path.stem}.SAFE'}")
+    
+    if len(extracted_paths) == 0:
+        print(f"Prameters used: {extract_dict}, files extracted: {extracted_paths}, files in zip: {filtered_files}")
+        raise ValueError(f"No files extracted from {zip_path}")
 
     return extracted_paths
 
@@ -93,20 +101,34 @@ def process_dem(dem_path, out_dir, return_type='list'):
     
     return None
 
-def reproject(*raster_paths, target_raster_path=None, nan_value=-9999): # Needed for resolution change
+def convert(s2_paths, folder):
+    folder = Path(folder)
+    new_paths = []
+    for s2_path in s2_paths:
+        tif_path = folder/f"{s2_path.stem}.tif"
+        gdal.Translate(str(tif_path), str(s2_path))
+        new_paths.append(tif_path)
+        s2_path.unlink()
+    
+    return new_paths
+
+def reproject(*raster_paths, target_raster_path=None, nan_value=-9999, output_type=gdalconst.GDT_Float32): # Needed for resolution change
     if target_raster_path is None:
         target_raster_path = raster_paths[0]
     
-    reprojected_raster_paths = reproject_set(target_raster_path, nan_value, *raster_paths)
+    reprojected_raster_paths = reproject_set(target_raster_path, nan_value, *raster_paths, output_type=output_type)
     
     return reprojected_raster_paths
 
-def stack(out_dir, *input_paths):
-    options = gdal.BuildVRTOptions(separate=True)
+def stack(out_dir, *input_paths, data_type=None):
+    options = gdal.BuildVRTOptions(separate=True, srcNodata=-9999, VRTNodata=-9999)
     to_merge = [str(x) for x in input_paths]
-    vrt_path = out_dir/f"{out_dir.stem}.vrt"
+    if data_type is None: stem = out_dir.stem
+    else: stem = data_type
 
-    out_path = out_dir/f"{out_dir.stem}.tif"
+    vrt_path = out_dir/f"{stem}.vrt"
+
+    out_path = out_dir/f"{stem}.tif"
     vrt = gdal.BuildVRT(str(vrt_path), to_merge, options=options)
     gdal.Translate(str(out_path), vrt)
 
@@ -114,8 +136,19 @@ def stack(out_dir, *input_paths):
 
     return out_path
 
+def merge(out_path, *input_paths):
+    options = gdal.BuildVRTOptions(separate=False, srcNodata=-9999, VRTNodata=-9999) # TODO Avoid hardcoding
+    x = [str(x) for x in input_paths]
+    var = gdal.BuildVRT("combo.vrt", x, options=options)
+    var = None
+
+    gdal.Translate(str(out_path), 'combo.vrt')
+    Path('combo.vrt').unlink()
+
+    return out_path
+
 def tile(*raster_paths, tile_size=244, data_type="stacked"):
-    tile_dir = multiraster_tiling(tile_size, *raster_paths, data_type=data_type)
+    tile_dir = singleraster_tiling(tile_size, *raster_paths, data_type=data_type)
     return tile_dir
 
 def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delete_all=True):
@@ -163,3 +196,97 @@ def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delet
 
 
     return tile_dir
+
+def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_dict=None, set_type='inference', delete_all=True):
+    Mtic, mtic = time.time(), time.time()
+    num_images, num_steps = len(s2_zip_paths), 7*len(s2_zip_paths)+2
+    project_dir = Path(project_dir)
+
+    print(f"o---o---o---o---o---o---o\tNot Started \t\t\t(0/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+    if extract_dict is None:
+        extract_dict = EXTRACT_DICT
+
+    s2_list, dem_list = [], []
+    stacked_training_s2_paths, stacked_training_dem_paths, stacked_inference_paths = [], [], []
+    for k, s2_zip_path in enumerate(s2_zip_paths):
+        step_folder = project_dir/s2_zip_path.stem
+        step_folder.mkdir(parents=True, exist_ok=True)
+        
+        step_s2_list = extract(s2_zip_path, step_folder, extract_dict)
+        print(f"•---o---o---o---o---o---o\tSentinel bands extracted \t({7*k+1}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+        mtic=time.time()
+
+        step_s2_list = convert(step_s2_list, step_folder)
+        s2_list.extend(step_s2_list)
+        step_target_raster_path = step_s2_list[0]
+        print(f"•---•---•---•---o---o---o\tSentinel images converted \t({7*k+2}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+        mtic=time.time()
+
+        step_dem_path = download_dem(step_target_raster_path, step_folder)
+        print(f"•---•---o---o---o---o---o\tDEM downloaded \t\t\t({7*k+3}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+        mtic=time.time()
+
+        step_dem_path = clip_dem(step_dem_path, step_target_raster_path, step_folder)
+        print(f"•---•---•---o---o---o---o\tDEM clipped \t\t\t({7*k+4}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+        mtic=time.time()
+
+        step_dem_list = process_dem(step_dem_path, step_folder)
+        print(f"•---•---•---•---o---o---o\tDEM processed \t\t\t({7*k+5}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+        mtic=time.time()
+
+        step_dem_list = reproject(*step_dem_list, target_raster_path=step_target_raster_path)
+        step_s2_list = reproject(*step_s2_list, target_raster_path=step_target_raster_path)
+        print(f"•---•---•---•---•---o---o\tReprojections completed \t({7*k+6}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+        mtic=time.time()
+
+        if set_type == 'inference':
+            step_all_paths = step_s2_list + step_dem_list
+            step_stacked_path = stack(step_folder, *step_all_paths)
+            stacked_inference_paths.append(step_stacked_path)
+            stacked_paths = stacked_inference_paths
+            print(f"•---•---•---•---•---•---o\tAll bands stacked \t\t({7*k+7}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+            mtic=time.time()
+        
+        elif set_type == 'training':
+            step_stacked_s2_path = stack(step_folder, *step_s2_list, data_type='S2-stack')
+            step_stacked_dem_path = stack(step_folder, *step_dem_list, data_type='DEM-stack')
+            stacked_training_s2_paths.append(step_stacked_s2_path)
+            stacked_training_dem_paths.append(step_stacked_dem_path)
+            stacked_paths = stacked_training_s2_paths + stacked_training_dem_paths
+            print(f"•---•---•---•---•---•---o\tAll bands stacked \t\t({7*k+7}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+            mtic=time.time()
+
+    if set_type == 'inference':
+        merged_path = merge(project_dir/f"{project_dir.name}.tif", *stacked_inference_paths)
+        print(f"•---•---•---•---•---•---•\tStacked Paths merged \t\t({7*num_images+1}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+        mtic=time.time()
+
+        tile_dir = singleraster_tiling(244, merged_path, data_type="stacked")
+        print(f"•---•---•---•---•---•---•\tTiles ready for inference \t({7*num_images+2}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+
+    elif set_type == 'training':
+        merged_dem_path = merge(project_dir/f"DEM-stack.tif", *stacked_training_dem_paths)
+        merged_s2_path = merge(project_dir/f"S2-stack.tif", *stacked_training_s2_paths)
+        print(f"•---•---•---•---•---•---•\tStacked Paths merged \t\t({7*num_images+1}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+        mtic=time.time()
+
+        s2_tile_dir = singleraster_tiling(244, merged_s2_path, data_type="S2-stack")
+        dem_tile_dir = singleraster_tiling(244, merged_dem_path, data_type="DEM-stack")
+        tile_dir = (s2_tile_dir, dem_tile_dir)
+        print(f"•---•---•---•---•---•---•\tTiles ready for inference \t({7*num_images+2}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
+
+    if delete_all:
+        for s2_path in s2_list:
+            Path(s2_path).unlink()
+
+        for dem_path in dem_list:
+            Path(dem_path).unlink()
+
+        for stacked_path in stacked_paths:
+            Path(stacked_path).unlink()
+
+        Path(merged_path).unlink()
+        print("Unnecessary project files removed.")
+
+
+    return tile_dir    
