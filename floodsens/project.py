@@ -9,9 +9,9 @@ class Project():
         self.root = Path(root)
 
         if isinstance(zip_paths, str):
-            self.zip_paths = [zip_paths]
+            self.zip_paths = [Path(zip_paths)]
         elif isinstance(zip_paths, list):
-            self.zip_paths = zip_paths
+            self.zip_paths = [Path(x) for x in zip_paths]
         else:
             raise TypeError("zip_paths must be a string or a list of strings")
 
