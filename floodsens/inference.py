@@ -67,7 +67,7 @@ def run_inference(model_path, input_tiles_folder, mini_batch_size = 4, cuda=True
 
         for i, m in enumerate(y_hat):
             input_name = mini_batch[i].stem
-            output_path = output_tiles_folder/f"{input_name}_yhat.pkl"
+            output_path = output_tiles_folder/f"yhat_{input_name}.pkl"
 
             result_dict = {}
             result_dict['map'] = m.detach().numpy()
@@ -82,7 +82,9 @@ def run_inference(model_path, input_tiles_folder, mini_batch_size = 4, cuda=True
 
 def create_map(tile_dir, inferred_dir, out_dir='map/', out_name='merged_map.tif'):
     input_tiles = [str(x) for x in tile_dir.iterdir()]
+    input_tiles.sort()
     out_tiles = [str(x) for x in inferred_dir.iterdir()]
+    out_tiles.sort()
     tiles_dict = {'input_tiles': input_tiles, 'output_tiles': out_tiles}
     tiles_df = pd.DataFrame.from_dict(tiles_dict)
 
