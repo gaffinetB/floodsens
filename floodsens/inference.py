@@ -15,7 +15,7 @@ def choose_model():
     model_path = model_paths[int(model_idx)-1]/"model.pth.tar"
     return model_path
 
-def run_inference(model_path, input_tiles_folder, mini_batch_size = 4, cuda=True):
+def run_inference(model_path, input_tiles_folder, mini_batch_size = 4, cuda=True, sigmoid_end=True):
     if cuda is True: model_dict = torch.load(model_path)
     else: model_dict = torch.load(model_path, map_location=torch.device('cpu'))    
     
@@ -61,6 +61,9 @@ def run_inference(model_path, input_tiles_folder, mini_batch_size = 4, cuda=True
 
         y_hat = model(x_batch)
 
+        if sigmoid_end:
+            y_hat = torch.sigmoid(y_hat)
+
         input_array, output_array = [], []
         output_tiles_folder = input_tiles_folder.parent/"out_tiles"
         output_tiles_folder.mkdir(exist_ok=True)
@@ -80,7 +83,7 @@ def run_inference(model_path, input_tiles_folder, mini_batch_size = 4, cuda=True
 
     return output_tiles_folder
 
-def create_map(tile_dir, inferred_dir, out_dir='map/', out_name='merged_map.tif'):
+def create_map(tile_dir, inferred_dir, out_path, clean=True):
     input_tiles = [str(x) for x in tile_dir.iterdir()]
     input_tiles.sort()
     out_tiles = [str(x) for x in inferred_dir.iterdir()]
@@ -90,10 +93,10 @@ def create_map(tile_dir, inferred_dir, out_dir='map/', out_name='merged_map.tif'
 
     NoData_value = -9999
 
-    out_dir = Path(out_dir)
-    out_dir.mkdir(exist_ok=True)
-    out_path = out_dir/out_name
 
+    out_path = Path(out_path)
+    out_path.parent.mkdir(exist_ok=True)
+    
     for row in tiles_df.iterrows():
         input_tile = row[1]['input_tiles']
         inferred_tile = row[1]['output_tiles']
@@ -106,11 +109,11 @@ def create_map(tile_dir, inferred_dir, out_dir='map/', out_name='merged_map.tif'
         proj = input_raster.GetProjection()
         x_res, y_res = input_raster.RasterXSize, input_raster.RasterYSize
 
-        out_name = Path(inferred_tile).stem
+        tile_name = Path(inferred_tile).stem
         driver = gdal.GetDriverByName('GTiff')
         driver.Register()
                 
-        out_ds = driver.Create(str(out_dir/f"{out_name}_map.tif"), x_res, y_res, 1, gdal.GDT_Float32)
+        out_ds = driver.Create(str(out_path.parent/f"{tile_name}_map.tif"), x_res, y_res, 1, gdal.GDT_Float32)
         out_ds.SetGeoTransform(gt)
         out_ds.SetProjection(proj)
         band = out_ds.GetRasterBand(1)
@@ -118,10 +121,15 @@ def create_map(tile_dir, inferred_dir, out_dir='map/', out_name='merged_map.tif'
         band.WriteArray(inferred_map_array)
         out_ds = None
 
-    map_tiles =  [str(x) for x in out_dir.iterdir()] # glob.glob('*map.tif')
+    map_tiles =  [str(x) for x in out_path.parent.iterdir() if x.is_file() and x.name.startswith('yhat_')] # glob.glob('*map.tif')
     vrt_options = gdal.BuildVRTOptions()
     map_vrt = gdal.BuildVRT('inferred_map.vrt', map_tiles, options=vrt_options)
     gdal.Translate(str(out_path), map_vrt)
+
+    if clean:
+        for map_tile in map_tiles:
+            Path(map_tile).unlink()
+
 
     # TODO Include below options cleanly in gdal.Translate() call
     # subprocess.call(['gdal_translate', '-of', 'COG', 'map.vrt', directory/'map.tif', '--config', 'CHECK_DISK_FREE_SPACE', 'NO'])

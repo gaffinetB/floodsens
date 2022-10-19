@@ -25,6 +25,7 @@ from pathlib import Path
 import boto3
 import rasterio
 from osgeo import gdal
+from floodsens.logger import logger
 
 from pyproj import Proj, transform
 
@@ -44,7 +45,6 @@ def _get_prefixes(raster_path):
                     list of prefixes for S3 download
     """
     ds_raster = rasterio.open(str(raster_path))
-    print(f"loaded raster:\t{ds_raster}")
     epsg = str(ds_raster.read_crs().to_epsg())
     zone_letter = 'N' if epsg[2] == '6' else 'S'
 
@@ -62,14 +62,14 @@ def _get_prefixes(raster_path):
     inProj = Proj(init='epsg:'+epsg) # not yet tested if also with utm
     outProj = Proj(init='epsg:4326')
 
+    # inProj = Proj(f'epsg:{epsg}')
+    # outProj = Proj('epsg:4326')
+
     lower_left = transform(inProj,outProj,bounds.left,bounds.bottom)
     upper_right = transform(inProj,outProj,bounds.right,bounds.top)
 
     lower_left = lower_left[::-1]
     upper_right = upper_right[::-1]
-
-    print(lower_left)
-    print(upper_right)
 
     # in case Proj doesnt do utm natively
     #lower_left = utm.to_latlon(bounds.left, bounds.bottom, int(
@@ -153,13 +153,13 @@ def _download_coreg_from_prefix(prefixes,
 
     downloaded = []
 
-    for pfx in prefixes:
-        objs = my_bucket.objects.filter(Prefix=pfx)
-        if len(list(objs.all())) > 0:
-            for obj in objs:
-                fn_dem = temp_dir/f"{pfx}.tif"
-                my_bucket.download_file(obj.key, str(fn_dem))
-                downloaded.append(str(temp_dir/f"{pfx}.tif"))
+    for prefix in prefixes:
+        try:
+            object_path = str(temp_dir/f"{prefix}.tif")
+            my_bucket.download_file(f"{prefix}/{prefix}.tif", object_path)
+            downloaded.append(str(object_path))
+        except:
+            logger.exception(f"Error when downloading prefix {prefix}")
 
     if len(downloaded) > 1:
         gdal.BuildVRT(str(fn_dem_combo_vrt), downloaded)

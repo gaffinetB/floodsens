@@ -4,9 +4,12 @@ from pathlib import Path
 
 
 class Project():
-    def __init__(self, root, zip_paths, tile_dir=None, inferred_dir=None, 
+    def __init__(self, root, zip_paths=None, tile_dir=None, inferred_dir=None, 
                     inferred_path=None, model_path=None, cuda=True):
         self.root = Path(root)
+
+        if zip_paths is None:
+            zip_paths = [str(x) for x in (Path(root)/'zip').iterdir() if x.suffix == '.zip']
 
         if isinstance(zip_paths, str):
             self.zip_paths = [Path(zip_paths)]
@@ -14,6 +17,7 @@ class Project():
             self.zip_paths = [Path(x) for x in zip_paths]
         else:
             raise TypeError("zip_paths must be a string or a list of strings")
+
 
         if model_path is None: self.model_path = None
         else: self.model_path = model_path
@@ -52,7 +56,8 @@ class Project():
 
     @classmethod
     def from_folder(cls, root, model_path=None):
-        zip_path = list((Path(root)/'zip').iterdir())[0] # TODO DO BETTER
+        zip_path = list((Path(root)/'zip').iterdir())
+         
         project = cls(root, zip_path)
 
         project.model_path = model_path
@@ -72,10 +77,12 @@ class Project():
         return project
 
     def default_preprocessing(self, set_type='inference'):
-        if len(self.zip_paths) == 1:
-            self.tile_dir = preprocessing.run_default_preprocessing(self.root, self.zip_paths[0], delete_all=self.clean)
-        else:
-            self.tile_dir = preprocessing.run_multiple_default_preprocessing(self.root, self.zip_paths, delete_all=self.clean, set_type=set_type)
+        # if len(self.zip_paths) == 1:
+        #     self.tile_dir = preprocessing.run_default_preprocessing(self.root, self.zip_paths[0], delete_all=self.clean)
+        # else:
+        #     self.tile_dir = preprocessing.run_multiple_default_preprocessing(self.root, self.zip_paths, delete_all=self.clean, set_type=set_type)
+        
+        self.tile_dir = preprocessing.run_multiple_default_preprocessing(self.root, self.zip_paths, delete_all=self.clean, set_type=set_type)
 
     def choose_model(self):
         model_paths = [x for x in Path('models').iterdir() if x.is_dir()]       
@@ -87,16 +94,15 @@ class Project():
     def load_model(self, model_path):
         self.model_path = model_path
 
-    def inference(self):
-        self.inferred_dir = inference.run_inference(self.model_path, self.tile_dir, cuda=self.cuda)
+    def inference(self, sigmoid_end=True):
+        self.inferred_dir = inference.run_inference(self.model_path, self.tile_dir, cuda=self.cuda, sigmoid_end=sigmoid_end)
 
     def save_map(self, out_path=None):
         if out_path is None:
-            self.inferred_path = inference.create_map(self.tile_dir, self.inferred_dir)
+            self.inferred_path = inference.create_map(self.tile_dir, self.inferred_dir, out_path=f'{self.root}/out.tif')
 
         else:
             out_path = Path(out_path)
             self.inferred_path = inference.create_map(self.tile_dir, 
                                                     self.inferred_dir, 
-                                                    out_dir=out_path.parent, 
-                                                    out_name=out_path.name)
+                                                    out_path=out_path)
