@@ -95,7 +95,7 @@ class Project():
         self.model_path = model_path
 
     def inference(self, sigmoid_end=True):
-        self.inferred_dir = inference.run_inference(self.model_path, self.tile_dir, cuda=self.cuda, sigmoid_end=sigmoid_end)
+        self.inferred_dir = inference.run_inference(self.model_path, self.tile_dir, self.channels, cuda=self.cuda, sigmoid_end=sigmoid_end)
 
     def save_map(self, out_path=None):
         if out_path is None:
