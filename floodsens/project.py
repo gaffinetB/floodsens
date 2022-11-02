@@ -5,7 +5,7 @@ from pathlib import Path
 
 class Project():
     def __init__(self, root, zip_paths=None, tile_dir=None, inferred_dir=None, 
-                    inferred_path=None, model_path=None, cuda=True):
+                    inferred_path=None, model_path=None, cuda=True, channels=None):
         self.root = Path(root)
 
         if zip_paths is None:
@@ -34,6 +34,8 @@ class Project():
         self.cuda = cuda
         self.clean = True
 
+        if channels is None: self.channels = [0,1,2,3,4,5,6,7,8,9,10,11,12,13]
+
     def __repr__(self):
         if self.tile_dir is None: tile_dir = "(not set)" 
         else: tile_dir = self.tile_dir
@@ -51,6 +53,7 @@ class Project():
         repr_str +=f'Preprocessed Tiles:\t{tile_dir}\n'
         repr_str +=f'Inferred Tiles:\t\t{inferred_dir}\n'
         repr_str +=f'Inferred Map:\t\t{inferred_path}'
+        repr_str +=f'Channels:\t\t{len(self.channels)+1}'
 
         return repr_str
 
