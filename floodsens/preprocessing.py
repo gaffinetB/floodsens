@@ -45,6 +45,18 @@ def _filter_zip(zip_path, extract_dict, return_type='list'):
         return None
 
 def extract(zip_path, project_dir, extract_dict):
+    """Extracts files from zip archive according to extract_dict.
+    Returns list of paths of extracted files.
+    
+    Parameters
+    ----------
+    zip_path : Path
+        Path to zip archive
+    project_dir : Path
+        Path to project directory
+    extract_dict : dict
+        Dictionary with keys as resolution and values as bands to extract.
+    """
     project_dir = Path(project_dir)
     filtered_files = _filter_zip(zip_path, extract_dict, return_type="list")
     zip_file = zipfile.ZipFile(zip_path, 'r')

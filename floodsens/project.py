@@ -1,6 +1,7 @@
 import floodsens.preprocessing as preprocessing
 import floodsens.inference as inference
 import floodsens.utils as utils
+import floodsens.ndwi as ndwi
 from floodsens.logger import logger
 from floodsens.utils import FloodsensModel
 
@@ -74,8 +75,10 @@ class Project():
 
     def run_floodsens(self, aoi_name="NewAOI"):
         # Check if model is loaded
+        
 
         # Check if Sentinel Images are available
+        
 
         # Run preprocessing
         preprocessed_tiles = preprocessing.run_multiple_default_preprocessing(self.project_folder, self.sentinel_archives, delete_all=False, set_type="inference")
@@ -91,15 +94,12 @@ class Project():
 
     def run_ndwi(self, threshold):
         # Check if Sentinel Images are available
+        if len(self.sentinel_archives) == 0:
+            raise FileNotFoundError(f"No Sentinel-2 archives found. Please download Sentinel-2 archives first.")
 
         # Extract B08 and B03 from Sentinel archives
-
-        # Compute NDWI for each Sentinel Image
-
-        # Merge NDWI results
-
-        # Clean intermediate products
-        pass
+        ndwi_path = ndwi.compute_ndwi(self.sentinel_archives, threshold, self.project_folder)
+        
 
     def save_tci(self):
         # Check if Sentinel Images are available
