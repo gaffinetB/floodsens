@@ -36,7 +36,7 @@ def compute_ndwi(archives, threshold, project_dir):
         # Save ndwi_ds to disk
         ndwi_ds.FlushCache()
 
-        ndwi_paths.append(ndwi_path)
+        ndwi_paths.append(str(ndwi_path))
     
     # Create vrt from ndwi_paths
     gdal.BuildVRT(str(temp_dir/"ndwi.vrt"), ndwi_paths, vrt_options=gdal.BuildVRTOptions())

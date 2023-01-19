@@ -1,6 +1,10 @@
 import re
 import torch
+import shutil
+import itertools
+import zipfile
 import geopandas as gpd
+from pathlib import Path
 
 from floodsens.logger import logger
 
@@ -33,3 +37,31 @@ def extract_metadata(paths): #FIXME Only for single image at the moment
     logger.info(f"AOI and time extracted from Sentinel-2 images")
 
     return time, aoi
+
+def extract(zip_path, extract_dir, extract_list):
+    extract_dir = Path(extract_dir)
+    zip_file = zipfile.ZipFile(zip_path, 'r')
+
+    extractable_files = []
+    for file in zip_file.namelist():
+        match = list(filter(lambda x: all([x[0][0] in x[1], x[0][1] in x[1]]), zip(extract_list, itertools.repeat(file))))
+        
+        if len(match) == 0:
+            continue
+        if len(match) == 1:
+            extractable_files.append(match[0][1])
+        if len(match) > 1:
+            raise ValueError(f"Filtering zip archive failed. Unexpected matche ambiguity: {filtered_files}")
+        
+    extracted_files = []
+    for extractable_file in extractable_files:
+        zip_file.extract(extractable_file, extract_dir)
+        extractable_file = Path(extractable_file)
+        extracted_file = extract_dir/extractable_file.name
+        (extract_dir/extractable_file).rename(extracted_file)
+        
+        extracted_files.append(extracted_file)
+        
+    [shutil.rmtree(x) for x in extract_dir.iterdir() if x.is_dir()]
+    extracted_files.sort()
+    return extracted_files

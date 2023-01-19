@@ -44,6 +44,7 @@ class Project():
         # Check if models available & load
         models = [Path(x) for x in (project_folder/"Models").iterdir() if x.suffix == ".tar"]
         if len(models) == 0:
+            model = None
             logger.warn(f"No models available")
         elif len(models) == 1:
             model = FloodsensModel(models[0])
