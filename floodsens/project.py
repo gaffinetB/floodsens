@@ -42,11 +42,13 @@ class Project():
         date, aoi = utils.extract_metadata(sentinel_archives)
 
         # Check if models available & load
+        if not (project_folder/"Models").exists():
+            logger.warn("No models available. Please place models in \"Models\" folder.")
+            return Project(project_folder, sentinel_archives, None, date, aoi)
+        
         models = [Path(x) for x in (project_folder/"Models").iterdir() if x.suffix == ".tar"]
-        if len(models) == 0:
-            model = None
-            logger.warn(f"No models available")
-        elif len(models) == 1:
+        
+        if len(models) == 1:
             model = FloodsensModel(models[0])
             logger.info(f"Model sucessfully loaded. Model name is {model.name}")
         elif len(models) > 1:

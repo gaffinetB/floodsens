@@ -38,7 +38,7 @@ def extract_metadata(paths): #FIXME Only for single image at the moment
 
     return time, aoi
 
-def extract(zip_path, extract_dir, extract_list):
+def extract(zip_path, extract_dir, extract_list, cleanup=True):
     extract_dir = Path(extract_dir)
     zip_file = zipfile.ZipFile(zip_path, 'r')
 
@@ -62,6 +62,7 @@ def extract(zip_path, extract_dir, extract_list):
         
         extracted_files.append(extracted_file)
         
-    [shutil.rmtree(x) for x in extract_dir.iterdir() if x.is_dir()]
+    if cleanup: shutil.rmtree(extract_dir/f"{zip_path.stem}.SAFE")
+    
     extracted_files.sort()
     return extracted_files
