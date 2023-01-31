@@ -3,21 +3,21 @@ import floodsens.inference as inference
 import floodsens.utils as utils
 import floodsens.ndwi as ndwi
 from floodsens.logger import logger
-from floodsens.utils import FloodsensModel
+from floodsens.model import FloodsensModel
 
 from pathlib import Path
 
 class Project():
 
-    def __init__(self, project_folder, sentinel_archives, model, date, aoi):
+    def __init__(self, project_folder, sentinel_archives, models, date, aoi):
         self.date = date
         self.aoi = aoi
         self.sentinel_archives = sentinel_archives
-        self.channels = None
-        self.model = model
+        self.models = models
         self.project_folder = Path(project_folder)
 
     def __repr__(self) -> str:
+        # TODO Add more information
         return f"{self.project_folder.name}"
 
     @classmethod
@@ -46,15 +46,9 @@ class Project():
             logger.warn("No models available. Please place models in \"Models\" folder.")
             return Project(project_folder, sentinel_archives, None, date, aoi)
         
-        models = [Path(x) for x in (project_folder/"Models").iterdir() if x.suffix == ".tar"]
+        models = [FloodsensModel(Path(x)) for x in (project_folder/"Models").iterdir() if x.suffix == ".tar"]
         
-        if len(models) == 1:
-            model = FloodsensModel(models[0])
-            logger.info(f"Model sucessfully loaded. Model name is {model.name}")
-        elif len(models) > 1:
-            logger.warn(f"Multiple models available. Please load manually using Project.load_model method.")
-
-        return Project(project_folder, sentinel_archives, model, date, aoi)
+        return Project(project_folder, sentinel_archives, models, date, aoi)
 
     @classmethod
     def from_aoi(self, aoi, time, project_folder, filter_mode="date"):
@@ -64,16 +58,21 @@ class Project():
 
         # Download remaining candidates
 
-        # Set model?
-
         raise NotImplementedError(f"This feature has not been implemented yet.")
+    
+    def activate_model(self):
+        for k, model in enumerate(self.models):
+            print(f"{k+1}\t-\t{model.name}")
         
+        model_idx = int(input("Please select a model by typing the preceding number: "))
+        self.model = FloodsensModel(self.models[model_idx-1])
+        logger.info(f"Model {self.models[model_idx-1].name} activated.")
 
     def load_model(self, path):
         self.model = FloodsensModel(path)
 
     def download_sentinel2(self):
-        self.zips = utils.download_sentinel2(self.aoi, self.time)
+        self.sentinel_archives = utils.download_sentinel2(self.aoi, self.time)
         logger.info(f"{len(self.zips)} Sentinel-2 archives downloaded.")
 
     def run_floodsens(self, aoi_name="NewAOI"):

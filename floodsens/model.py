@@ -114,3 +114,18 @@ class MainNET(nn.Module):
 
             if isinstance(m, nn.Conv2d):
                 nn.init.xavier_uniform_(m.weight)
+
+
+class FloodsensModel():
+    def __init__(self, path, device="cpu"):
+        model_dict = torch.load(path, map_location=torch.device(device))
+        self.path = path
+        self.name = path.stem
+        self.means = model_dict["model_means"]
+        self.stds = model_dict["model_stds"]
+        
+        if len(self.stds) == 14:
+            self.channels = [0,1,2,3,4,5,6,7,8,9,10,11,12,13]
+    
+    def __repr__(self):
+        return f"Model Name: \t{self.name}\n Number of channels: \t{len(self.channels)}\nLocation: \t{self.path}"
