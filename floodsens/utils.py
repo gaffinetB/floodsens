@@ -10,7 +10,7 @@ from floodsens.logger import logger
 
 
 def download_sentinel2() -> list:
-    # TODO
+    # TODO with Google Earth Engine
     raise NotImplementedError("Download Sentinel-2 images from Copernicus Open Access Hub")
 
 def extract_metadata(paths): #FIXME Only for single image at the moment

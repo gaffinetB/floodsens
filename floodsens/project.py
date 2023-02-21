@@ -7,14 +7,12 @@ from floodsens.model import FloodsensModel
 
 from pathlib import Path
 
-class Project():
+class Project(object):
 
-    def __init__(self, project_folder, sentinel_archives, models, date, aoi):
-        self.date = date
-        self.aoi = aoi
+    def __init__(self, project_folder, sentinel_archives, models):
+        self.project_folder = Path(project_folder)
         self.sentinel_archives = sentinel_archives
         self.models = models
-        self.project_folder = Path(project_folder)
 
     def __repr__(self) -> str:
         # TODO Add more information
@@ -72,8 +70,7 @@ class Project():
         self.model = FloodsensModel(path)
 
     def download_sentinel2(self):
-        self.sentinel_archives = utils.download_sentinel2(self.aoi, self.time)
-        logger.info(f"{len(self.zips)} Sentinel-2 archives downloaded.")
+        raise NotImplementedError("Download Sentinel-2 images from Copernicus Open Access Hub")
 
     def run_floodsens(self, aoi_name="NewAOI"):
         # Check if model is loaded
