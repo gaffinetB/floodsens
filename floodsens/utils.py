@@ -37,7 +37,7 @@ def extract(zip_path, extract_dir, extract_list, cleanup=True):
         if len(match) == 1:
             extractable_files.append(match[0][1])
         if len(match) > 1:
-            raise ValueError(f"Filtering zip archive failed. Unexpected matche ambiguity: {filtered_files}")
+            raise ValueError(f"Filtering zip archive failed. Unexpected match ambiguity: {match}")
         
     extracted_files = []
     for extractable_file in extractable_files:

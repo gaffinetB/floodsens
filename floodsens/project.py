@@ -4,19 +4,19 @@ import floodsens.utils as utils
 import floodsens.ndwi as ndwi
 from floodsens.logger import logger
 from floodsens.model import FloodsensModel
+from floodsens.event import Event
 
 from pathlib import Path
 
 class Project(object):
 
-    def __init__(self, project_folder, sentinel_archives, models):
+    def __init__(self, project_folder, events, models):
         self.project_folder = Path(project_folder)
-        self.sentinel_archives = sentinel_archives
-        self.models = models
+        self.events = events if events is not None else []
+        self.models = models if models is not None else []
 
     def __repr__(self) -> str:
-        # TODO Add more information
-        return f"{self.project_folder.name}"
+        return f'{self.__class__.__name__}({self.project_folder}, {self.events}, {self.models})'.format(self=self)
 
     @classmethod
     def from_folder(self, path):
@@ -51,64 +51,21 @@ class Project(object):
     @classmethod
     def from_aoi(self, aoi, time, project_folder, filter_mode="date"):
         # Get Sentinel candidates
-
         # Filter candidates according to filter_mode
-
         # Download remaining candidates
-
         raise NotImplementedError(f"This feature has not been implemented yet.")
-    
-    def activate_model(self):
-        for k, model in enumerate(self.models):
-            print(f"{k+1}\t-\t{model.name}")
-        
-        model_idx = int(input("Please select a model by typing the preceding number: "))
-        self.model = FloodsensModel(self.models[model_idx-1])
-        logger.info(f"Model {self.models[model_idx-1].name} activated.")
 
-    def load_model(self, path):
-        self.model = FloodsensModel(path)
+    def load_models(self, model_folder):
+        self.models = [FloodsensModel(Path(x)) for x in Path(model_folder).iterdir() if x.suffix == ".tar"]
+        logger.info(f"{len(self.models)} models loaded.")
+        for model in self.models:
+            logger.info(f"Model {model.name} loaded.")
 
     def download_sentinel2(self):
         raise NotImplementedError("Download Sentinel-2 images from Copernicus Open Access Hub")
 
-    def run_floodsens(self, aoi_name="NewAOI"):
-        # Check if model is loaded
-        
-
-        # Check if Sentinel Images are available
-        
-
-        # Run preprocessing
-        preprocessed_tiles = preprocessing.run_multiple_default_preprocessing(self.project_folder, self.sentinel_archives, delete_all=False, set_type="inference")
-        
-        # Run inference
-        inferred_tiles = inference.run_inference(self.model.path, preprocessed_tiles, self.model.channels, cuda=False, sigmoid_end=True)
-        
-        # Create output maps
-        out_name = f"{self.project_folder}/{aoi_name}/FloodSENS_results.tif"
-        inference.create_map(preprocessed_tiles, inferred_tiles, out_path=out_name)
-        # Clean intermediate products
-
-
-    def run_ndwi(self, threshold):
-        # Check if Sentinel Images are available
-        if len(self.sentinel_archives) == 0:
-            raise FileNotFoundError(f"No Sentinel-2 archives found. Please download Sentinel-2 archives first.")
-
-        # Extract B08 and B03 from Sentinel archives
-        ndwi_path = ndwi.compute_ndwi(self.sentinel_archives, threshold, self.project_folder)
-        
-
-    def save_tci(self):
-        # Check if Sentinel Images are available
-
-        # Extract TCI Images from archives
-
-        # Merge TCI Images
-
-        # Clean intermediate products
-        pass
-
-    def performance_report(self):
-        pass
+    def initialize_event(self, name, sentinel_archive, model):
+        event_folder = self.project_folder/f"Event_{name}"
+        event = Event(event_folder, sentinel_archive, model)
+        self.events.append(event)
+        return event
