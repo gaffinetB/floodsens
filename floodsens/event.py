@@ -1,8 +1,8 @@
 """
 !!!MEANT FOR A SINGLE EVENT MEANING A SINGLE SENTINEL ARCHIVE!!!
 """
-import json
-from pathlib import Path
+import yaml
+from pathlib import Path, PurePath
 import floodsens.utils as utils
 import floodsens.preprocessing as preprocessing
 import floodsens.inference as inference
@@ -58,15 +58,23 @@ class Event(object):
         # TODO
         raise NotImplementedError(f"This feature has not been implemented yet.")
 
-    def save_to_json(self, filename=None):
-        if filename is None:
-            filename = f"{self.event_folder}/event_checkpoint.json"
+    def save_to_yaml(self):
+        filename = f"{self.event_folder}/event_checkpoint.yaml"
+        
+        event_data = self.__dict__
+        model_data = event_data.pop("model")
+        event_data["model"] = model_data.__dict__
+        
         with open(filename, "w") as f:
-            json.dump(self.__dict__, f)
+            yaml.dump(event_data, f)
     
     @classmethod
-    def from_json(self, filename):
+    def from_yaml(self, filename):
         with open(filename, "r") as f:
-            data = json.load(f)
+            data = yaml.load(f, Loader)
         
-        return Event(**data)
+        model_data = data.pop("model")
+        model = FloodsensModel(**model_data)
+        data["model"] = model
+        
+        return cls(**data)

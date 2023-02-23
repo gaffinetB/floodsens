@@ -7,6 +7,7 @@ from floodsens.model import FloodsensModel
 from floodsens.event import Event
 
 from pathlib import Path
+import yaml
 
 class Project(object):
 
@@ -20,12 +21,19 @@ class Project(object):
 
 
     @classmethod
-    def from_json(self, filename):
+    def from_yaml(self, filename):
         with open(filename, "r") as f:
-            data = json.load(f)
+            data = yaml.load(f, Loader=yaml.FullLoader)
         
-        return Project(**data)
+        return cls(**data)
 
+    def save_to_yaml(self):
+        filename = f"{self.project_folder}/project_checkpoint.yaml"
+        
+        event_data = [{"event_folder": event.event_folder, "sentinel_archive": event.sentinel_archive, "model": event.model} for event in self.events]
+        with open(filename, "w") as f:
+            json.dump({}, 
+                    f)
 
     # @classmethod
     # def from_folder(self, path):

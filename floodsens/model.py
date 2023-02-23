@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-
 import torchvision.transforms.functional as TF
 
+from pathlib import Path
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -119,8 +119,8 @@ class MainNET(nn.Module):
 class FloodsensModel():
     def __init__(self, path, device="cpu"):
         model_dict = torch.load(path, map_location=torch.device(device))
-        self.path = path
-        self.name = path.stem
+        self.path = Path(path)
+        self.name = self.path.stem
         self.means = model_dict["model_means"]
         self.stds = model_dict["model_stds"]
         
