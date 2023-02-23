@@ -1,6 +1,7 @@
 """
 !!!MEANT FOR A SINGLE EVENT MEANING A SINGLE SENTINEL ARCHIVE!!!
 """
+import json
 from pathlib import Path
 import floodsens.utils as utils
 import floodsens.preprocessing as preprocessing
@@ -57,3 +58,15 @@ class Event(object):
         # TODO
         raise NotImplementedError(f"This feature has not been implemented yet.")
 
+    def save_to_json(self, filename=None):
+        if filename is None:
+            filename = f"{self.event_folder}/event_checkpoint.json"
+        with open(filename, "w") as f:
+            json.dump(self.__dict__, f)
+    
+    @classmethod
+    def from_json(self, filename):
+        with open(filename, "r") as f:
+            data = json.load(f)
+        
+        return Event(**data)
