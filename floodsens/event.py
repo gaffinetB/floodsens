@@ -42,10 +42,10 @@ class Event(object):
         self.inferred_raster = Path(out_name)
         logger.info(f"Successfully created output map for {self.sentinel_archive.name}.")
         
-        for preprocessed_tile in preprocessed_tiles.iterdir():
+        for preprocessed_tile in preprocessed_tiles_folder.iterdir():
             preprocessed_tile.unlink()
         
-        for inferred_tile in inferred_tiles.iterdir():
+        for inferred_tile in inferred_tiles_folder.iterdir():
             inferred_tile.unlink()
         
         preprocessed_tiles_folder[0].parent.rmdir()
