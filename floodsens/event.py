@@ -42,14 +42,16 @@ class Event(object):
         self.inferred_raster = Path(out_name)
         logger.info(f"Successfully created output map for {self.sentinel_archive.name}.")
         
-        for preprocessed_tile in preprocessed_tiles_folder.iterdir():
-            preprocessed_tile.unlink()
-        
-        for inferred_tile in inferred_tiles_folder.iterdir():
-            inferred_tile.unlink()
-        
         list(preprocessed_tiles_folder.iterdir())[0].parent.rmdir()
         list(inferred_tiles_folder.iterdir())[0].parent.rmdir()
+
+        # for preprocessed_tile in preprocessed_tiles_folder.iterdir():
+        #     preprocessed_tile.unlink()
+        
+        # for inferred_tile in inferred_tiles_folder.iterdir():
+        #     inferred_tile.unlink()
+        
+
 
         logger.info(f"Successfully cleaned up intermediate products for {self.sentinel_archive.name}.")
         logger.info(f"Successfully ran FloodSENS on {self.sentinel_archive.name}.") 
