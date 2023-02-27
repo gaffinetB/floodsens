@@ -2,6 +2,7 @@
 !!!MEANT FOR A SINGLE EVENT MEANING A SINGLE SENTINEL ARCHIVE!!!
 """
 import yaml
+import shutil
 from pathlib import Path, PurePath
 import floodsens.utils as utils
 import floodsens.preprocessing as preprocessing
@@ -42,8 +43,7 @@ class Event(object):
         self.inferred_raster = Path(out_name)
         logger.info(f"Successfully created output map for {self.sentinel_archive.name}.")
         
-        list(preprocessed_tiles_folder.iterdir())[0].parent.rmdir()
-        list(inferred_tiles_folder.iterdir())[0].parent.rmdir()
+        shutil.rmtree(preprocessed_tiles_folder.parent)
 
         # for preprocessed_tile in preprocessed_tiles_folder.iterdir():
         #     preprocessed_tile.unlink()
