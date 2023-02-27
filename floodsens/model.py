@@ -117,14 +117,17 @@ class MainNET(nn.Module):
 
 
 class FloodsensModel():
-    def __init__(self, path, device="cpu"):
+    def __init__(self, path, name=None, means=None, stds=None, channels=None, device="cpu"):
         model_dict = torch.load(path, map_location=torch.device(device))
         self.path = Path(path)
-        self.name = self.path.stem
-        self.means = model_dict["model_means"]
-        self.stds = model_dict["model_stds"]
-        
-        if len(self.stds) == 14:
+
+        self.name = self.path.stem if name is None else name
+        self.means = means if means is not None else model_dict["model_means"]
+        self.stds = stds if stds is not None else model_dict["model_stds"]
+
+        if channels is not None:
+            self.channels = channels
+        elif len(self.stds) == 14:
             self.channels = [0,1,2,3,4,5,6,7,8,9,10,11,12,13]
     
     def __repr__(self):

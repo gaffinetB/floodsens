@@ -17,11 +17,11 @@ class Project(object):
         self.models = models if models is not None else []
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}({self.project_folder}, {self.events}, {self.models})'.format(self=self)
+        return f'{self.__class__.__name__}({self.project_folder}, {self.events}, {self.models})'
 
 
     @classmethod
-    def from_yaml(self, filename):
+    def from_yaml(cls, filename):
         with open(filename, "r") as f:
             data = yaml.load(f, Loader=yaml.FullLoader)
         
@@ -29,6 +29,8 @@ class Project(object):
 
     def save_to_yaml(self):
         filename = f"{self.project_folder}/project_checkpoint.yaml"
+
+        event_data = [event.__dict__ for event in self.events]
         
         event_data = [{"event_folder": event.event_folder, "sentinel_archive": event.sentinel_archive, "model": event.model} for event in self.events]
         with open(filename, "w") as f:

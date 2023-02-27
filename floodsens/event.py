@@ -24,32 +24,32 @@ class Event(object):
 
     def __repr__(self) -> str:
         # return f'{self.__class__.__name__}({self.event_folder}, {self.sentinel_archive}, {self.model}, {self.inferred_raster}, {self.ndwi_raster}, {self.aoi}, {self.date})'.format(self=self)
-        return f'{self.__class__.__name__}({self.event_folder}, {self.sentinel_archive}, {self.model}, {self.inferred_raster}, {self.ndwi_raster})'.format(self=self)
+        return f'{self.__class__.__name__}({self.event_folder}, {self.sentinel_archive}, {self.model}, {self.inferred_raster}, {self.ndwi_raster})'
 
     def run_floodsens(self):
         if self.model is None or not isinstance(self.model, FloodsensModel):
-            raise ValueError(f"Model not found at {self.model.path} or not of type FloodsensModel.")
+            raise ValueError(f"Model not found at {self.model} or not of type FloodsensModel.")
 
         if self.inferred_raster is not None:
             logger.warn(f"Overwriting existing inferred raster at {self.inferred_raster}.")
 
-        preprocessed_tiles = preprocessing.run_multiple_default_preprocessing(self.event_folder, [self.sentinel_archive], delete_all=True, set_type="inference")
+        preprocessed_tiles_folder = preprocessing.run_multiple_default_preprocessing(self.event_folder, [self.sentinel_archive], delete_all=True, set_type="inference")
         logger.info(f"Successfully preprocessed {self.sentinel_archive.name}.")
-        inferred_tiles = inference.run_inference(self.model.path, preprocessed_tiles, self.model.channels, cuda=False, sigmoid_end=True)
+        inferred_tiles_folder = inference.run_inference(self.model.path, preprocessed_tiles_folder, self.model.channels, cuda=False, sigmoid_end=True)
         logger.info(f"Successfully ran inference on {self.sentinel_archive.name}.")
-        out_name = f"{self.event_folder}/{aoi_name}/FloodSENS_results.tif"
-        inference.create_map(preprocessed_tiles, inferred_tiles, out_path=out_name)
+        out_name = f"{self.event_folder}/FloodSENS_results.tif"
+        inference.create_map(preprocessed_tiles_folder, inferred_tiles_folder, out_path=out_name)
         self.inferred_raster = Path(out_name)
         logger.info(f"Successfully created output map for {self.sentinel_archive.name}.")
         
-        for preprocessed_tile in preprocessed_tiles:
+        for preprocessed_tile in preprocessed_tiles.iterdir():
             preprocessed_tile.unlink()
         
-        for inferred_tile in inferred_tiles:
+        for inferred_tile in inferred_tiles.iterdir():
             inferred_tile.unlink()
         
-        preprocessed_tiles[0].parent.rmdir()
-        inferred_tiles[0].parent.rmdir()
+        preprocessed_tiles_folder[0].parent.rmdir()
+        inferred_tiles_folder[0].parent.rmdir()
 
         logger.info(f"Successfully cleaned up intermediate products for {self.sentinel_archive.name}.")
         logger.info(f"Successfully ran FloodSENS on {self.sentinel_archive.name}.") 
@@ -69,9 +69,9 @@ class Event(object):
             yaml.dump(event_data, f)
     
     @classmethod
-    def from_yaml(self, filename):
+    def from_yaml(cls, filename):
         with open(filename, "r") as f:
-            data = yaml.load(f, Loader)
+            data = yaml.load(f, yaml.Loader)
         
         model_data = data.pop("model")
         model = FloodsensModel(**model_data)
