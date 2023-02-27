@@ -48,8 +48,8 @@ class Event(object):
         for inferred_tile in inferred_tiles_folder.iterdir():
             inferred_tile.unlink()
         
-        preprocessed_tiles_folder[0].parent.rmdir()
-        inferred_tiles_folder[0].parent.rmdir()
+        list(preprocessed_tiles_folder.iterdir())[0].parent.rmdir()
+        list(inferred_tiles_folder.iterdir())[0].parent.rmdir()
 
         logger.info(f"Successfully cleaned up intermediate products for {self.sentinel_archive.name}.")
         logger.info(f"Successfully ran FloodSENS on {self.sentinel_archive.name}.") 

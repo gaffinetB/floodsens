@@ -1,5 +1,6 @@
 import time
 import zipfile
+import shutil
 from osgeo import gdal
 from osgeo import gdalconst
 from pathlib import Path
@@ -211,7 +212,6 @@ def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delet
         Path(stacked_path).unlink()
         print("Unnecessary project files removed.")
 
-
     return tile_dir
 
 def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_dict=None, set_type='inference', delete_all=True):
@@ -223,11 +223,12 @@ def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_dict=N
     if extract_dict is None:
         extract_dict = EXTRACT_DICT
 
-    s2_list, dem_list = [], []
+    s2_list, dem_list, extract_folder_list = [], [], []
     stacked_training_s2_paths, stacked_training_dem_paths, stacked_inference_paths = [], [], []
     for k, s2_zip_path in enumerate(s2_zip_paths):
         step_folder = project_dir/s2_zip_path.stem
         step_folder.mkdir(parents=True, exist_ok=True)
+        extract_folder_list.append(step_folder)
         
         step_s2_list = extract(s2_zip_path, step_folder, extract_dict)
         print(f"•---o---o---o---o---o---o\tSentinel bands extracted \t({7*k+1}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
@@ -306,7 +307,10 @@ def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_dict=N
         if set_type == 'training':
             merged_dem_path.unlink()
             merged_s2_path.unlink()
-            
+
+        for extract_folder in extract_folder_list:
+            shutil.rmtree(extract_folder)
+
         print("Unnecessary project files removed.")
 
 
