@@ -10,88 +10,107 @@ from pathlib import Path
 import yaml
 
 class Project(object):
-
-    def __init__(self, project_folder, events, models):
+    def __init__(self, project_folder, models=None, event_collection=None, event=None):
         self.project_folder = Path(project_folder)
-        self.events = events if events is not None else []
-        self.models = models if models is not None else []
+
+        if models is None:
+            self.models = {}
+        elif isinstance(models, dict):
+            self.models = models
+        elif isinstance(models, list):
+            self.models = {model.name: model for model in models}
+        elif isinstance(models, FloodsensModel):
+            self.models = {models.name: models}
+        else:
+            raise ValueError(f"models must be of type dict, list, or FloodsensModel. Got {type(models)} instead.")
+
+        if event_collection is None:
+            self.event_collection = {}
+        elif isinstance(event_collection, dict):
+            self.event_collection = event_collection
+        elif isinstance(event_collection, list):
+            self.event_collection = {event.name: event for event in event_collection}
+        elif isinstance(event_collection, Event):
+            self.event_collection = {event_collection.name: event_collection}
+        else:
+            raise ValueError(f"event_collection must be of type dict, list, or Event. Got {type(event_collection)} instead.")
+
+        if event is not None:
+            self.event = event
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}({self.project_folder}, {self.events}, {self.models})'
+        return f'{self.__class__.__name__}({self.project_folder}, {self.event_collection}, {self.models})'
 
+    def __str__(self) -> str:
+        # print the project folder
+        output = f"Project folder: {self.project_folder}\n"
+
+        # print the event details
+        output += f"Activated Event:\n"
+        output += f"\t{self.event}\n"
+
+        # print the event collection details
+        output += f"Event collection:\n"
+        for name, event in self.event_collection.items():
+            output += f"\t{name}:\n"
+            output += f"\t\t{event}\n"
+
+        # print the models details
+        output += f"Models:\n"
+        for name, model in self.models.items():
+            output += f"\t{name}:\n"
+            output += f"\t\t{model}\n"
+
+        return output
 
     @classmethod
     def from_yaml(cls, filename):
         with open(filename, "r") as f:
-            data = yaml.load(f, Loader=yaml.FullLoader)
+            data = yaml.load(f, Loader=yaml.Loader)
         
         return cls(**data)
 
-    def save_to_yaml(self):
+    def save_to_yaml(self): #TODO
         filename = f"{self.project_folder}/project_checkpoint.yaml"
+        project_data = self.__dict__
 
-        event_data = [event.__dict__ for event in self.events]
-        
-        event_data = [{"event_folder": event.event_folder, "sentinel_archive": event.sentinel_archive, "model": event.model} for event in self.events]
         with open(filename, "w") as f:
-            json.dump({}, 
-                    f)
+            yaml.dump(project_data, f)
 
-    # @classmethod
-    # def from_folder(self, path):
-    #     # Check if project folder exists
-    #     if self.project_folder.exists():
-    #         logger.info(f"Loading project from {self.project_folder}")
-    #     else:
-    #         raise FileNotFoundError(f"Project folder does not exist. Please create a project folder at {self.project_folder}.")
+    def activate_event(self, event_name):
+        self.event = self.event_collection[event_name]
+        logger.info(f"Event {self.event.name} activated.")
 
-    #     # TODO
-    #     raise NotImplementedError("Loading project from folder not implemented yet.")
-    #     # Check if Sentinel Images available in correct folder & load
-    #     project_folder = Path(path)
-    #     sentinel_folder = project_folder/"Sentinel Archives"
-    #     if not sentinel_folder.exists():
-    #         raise FileNotFoundError(f"Error when loading Sentinel-2 archives. \"Sentinel Archives\" folder does not exist. Please place Sentinel-2 archives in \"Sentinel Archives\" folder.")
-
-    #     sentinel_archives = [Path(x) for x in (project_folder/"Sentinel Archives").iterdir() if x.suffix == ".zip"]
-    #     if len(sentinel_archives) == 0:
-    #         logger.warn(f"No Sentinel Images available in {project_folder}")
-    #     elif len(sentinel_archives) >= 1:
-    #         sentinel_archives = sentinel_archives
-    #         logger.info(f"{len(sentinel_archives)} Sentinel-2 archives found.")
-    #     else:
-    #         raise RuntimeError(f"Error occured while loading Sentinel-2 archives.")
-
-    #     # Extract AOI and time from Sentinel-2 names
-    #     date, aoi = utils.extract_metadata(sentinel_archives)
-
-    #     # Check if models available & load
-    #     if not (project_folder/"Models").exists():
-    #         logger.warn("No models available. Please place models in \"Models\" folder.")
-    #         return Project(project_folder, sentinel_archives, None, date, aoi)
-        
-    #     models = [FloodsensModel(Path(x)) for x in (project_folder/"Models").iterdir() if x.suffix == ".tar"]
-        
-    #     return Project(project_folder, sentinel_archives, models, date, aoi)
-
-    @classmethod
-    def from_aoi(self, aoi, time, project_folder, filter_mode="date"):
-        # Get Sentinel candidates
-        # Filter candidates according to filter_mode
-        # Download remaining candidates
-        raise NotImplementedError(f"This feature has not been implemented yet.")
+    def choose_event(self):
+        for i, event in enumerate(self.event_collection.keys()):
+            print(f"{i+1}: {event}")
+        choice = int(input("Choose an event by entering corresponding integer: "))
+        self.activate_event(list(self.event_collection.keys())[choice-1])
 
     def load_models(self, model_folder):
-        self.models = [FloodsensModel(Path(x)) for x in Path(model_folder).iterdir() if x.suffix == ".tar"]
+        loaded_models = {}
+        model_paths = [x for x in Path(model_folder).iterdir() if x.suffix == ".tar"]
+        for model_path in model_paths:
+            model = FloodsensModel(model_path)
+            loaded_models[model.name] = model
+
+        self.models = loaded_models
         logger.info(f"{len(self.models)} models loaded.")
-        for model in self.models:
+
+        for model in self.models.values():
             logger.info(f"Model {model.name} loaded.")
 
-    def download_sentinel2(self):
+    def download_sentinel2(self): #TODO with Google Earth Engine
         raise NotImplementedError("Download Sentinel-2 images from Copernicus Open Access Hub")
 
-    def initialize_event(self, name, sentinel_archive, model):
-        event_folder = self.project_folder/f"Event_{name}"
+    def add_event(self, yaml_path):
+        event = Event.from_yaml(yaml_path)
+        self.event_collection[event.name] = event
+        return event
+
+    def add_new_event(self, event_name, sentinel_archive, model):
+        event_folder = self.project_folder/event_name
         event = Event(event_folder, sentinel_archive, model)
-        self.events.append(event)
+        self.event_collection[event.name] = event
+        event.save_to_yaml()
         return event

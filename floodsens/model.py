@@ -132,4 +132,10 @@ class FloodsensModel():
     
     def __repr__(self):
         return f'{self.__class__.__name__}({self.path}, {self.name}, {self.channels}, {self.means}, {self.stds})'.format(self=self)
-        # return f"Model Name: \t{self.name}\n Number of channels: \t{len(self.channels)}\nLocation: \t{self.path}"
+    
+    def __str__(self) -> str:
+        s = f"\tName: {self.name}\n" 
+        s += f"\t\tPath: {self.path}\n" 
+        s += f"\t\tNumber of Channels: {len(self.channels)}\n" 
+
+        return s

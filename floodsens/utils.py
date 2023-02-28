@@ -52,3 +52,4 @@ def extract(zip_path, extract_dir, extract_list, cleanup=True):
     
     extracted_files.sort()
     return extracted_files
+

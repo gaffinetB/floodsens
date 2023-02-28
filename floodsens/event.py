@@ -11,10 +11,11 @@ from floodsens.logger import logger
 from floodsens.model import FloodsensModel
 
 class Event(object):
-    def __init__(self, event_folder, sentinel_archive, model, inferred_raster=None, ndwi_raster=None, true_color_raster=None, aoi=None, date=None):
+    def __init__(self, event_folder, sentinel_archive, model, name=None, inferred_raster=None, ndwi_raster=None, true_color_raster=None, aoi=None, date=None):
         self.event_folder = Path(event_folder)
         if not self.event_folder.exists():
             self.event_folder.mkdir(parents=True, exist_ok=True)
+        self.name = name if name is not None else self.event_folder.name
         self.sentinel_archive = Path(sentinel_archive)
         self.model = model if isinstance(model, FloodsensModel) else None
         self.inferred_raster = Path(inferred_raster) if inferred_raster is not None else None
@@ -24,8 +25,22 @@ class Event(object):
         # self.date, self.aoi = utils.extract_metadata(self.sentinel_archive)
 
     def __repr__(self) -> str:
-        # return f'{self.__class__.__name__}({self.event_folder}, {self.sentinel_archive}, {self.model}, {self.inferred_raster}, {self.ndwi_raster}, {self.aoi}, {self.date})'.format(self=self)
         return f'{self.__class__.__name__}({self.event_folder}, {self.sentinel_archive}, {self.model}, {self.inferred_raster}, {self.ndwi_raster})'
+
+    def __str__(self) -> str:
+        s = f"Event folder: {self.event_folder}\n"
+        s += f"\tSentinel archive: {self.sentinel_archive}\n"
+        
+        if self.inferred_raster:
+            s += f"\tInferred raster: {self.inferred_raster}\n"
+            
+        if self.ndwi_raster:
+            s += f"\tNDWI raster: {self.ndwi_raster}\n\n"
+ 
+        s += "\tModel:\n"
+        s += str(self.model)
+        
+        return s
 
     def run_floodsens(self):
         if self.model is None or not isinstance(self.model, FloodsensModel):
@@ -45,19 +60,13 @@ class Event(object):
         
         shutil.rmtree(preprocessed_tiles_folder.parent)
 
-        # for preprocessed_tile in preprocessed_tiles_folder.iterdir():
-        #     preprocessed_tile.unlink()
-        
-        # for inferred_tile in inferred_tiles_folder.iterdir():
-        #     inferred_tile.unlink()
-        
-
-
         logger.info(f"Successfully cleaned up intermediate products for {self.sentinel_archive.name}.")
         logger.info(f"Successfully ran FloodSENS on {self.sentinel_archive.name}.") 
 
-    def run_ndwi(self):
-        # TODO
+    def run_ndwi(self): #TODO: Implement NDWI
+        raise NotImplementedError(f"This feature has not been implemented yet.")
+
+    def extract_truecolor(self):
         raise NotImplementedError(f"This feature has not been implemented yet.")
 
     def save_to_yaml(self):
@@ -71,8 +80,8 @@ class Event(object):
             yaml.dump(event_data, f)
     
     @classmethod
-    def from_yaml(cls, filename):
-        with open(filename, "r") as f:
+    def from_yaml(cls, yaml_path):
+        with open(yaml_path, "r") as f:
             data = yaml.load(f, yaml.Loader)
         
         model_data = data.pop("model")
