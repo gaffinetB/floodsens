@@ -1,8 +1,11 @@
 from setuptools import setup, find_packages
 
+# python setup.py sdist
+# twine upload dist/*
+
 setup(
     name = "floodsens",
-    version = "0.1.5",
+    version = "0.1.8",
     author = "Ben Gaffinet",
     author_email = "ben@gaffinet.lu",
     packages = find_packages(include=['floodsens'], exclude=['tests', 'notebooks']),

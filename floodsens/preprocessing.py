@@ -1,5 +1,6 @@
 import time
 import zipfile
+import shutil
 from osgeo import gdal
 from osgeo import gdalconst
 from pathlib import Path
@@ -8,6 +9,7 @@ from floodsens._download import get_copernicus_dem
 from floodsens._process import flow_accumulation, hand, slope, twi
 from floodsens._reproject import reproject_set, reproject_from_raster
 from floodsens.constants import EXTRACT_DICT
+import demloader as dl
 
 
 def _rm_tree(path):
@@ -44,6 +46,18 @@ def _filter_zip(zip_path, extract_dict, return_type='list'):
         return None
 
 def extract(zip_path, project_dir, extract_dict):
+    """Extracts files from zip archive according to extract_dict.
+    Returns list of paths of extracted files.
+    
+    Parameters
+    ----------
+    zip_path : Path
+        Path to zip archive
+    project_dir : Path
+        Path to project directory
+    extract_dict : dict
+        Dictionary with keys as resolution and values as bands to extract.
+    """
     project_dir = Path(project_dir)
     filtered_files = _filter_zip(zip_path, extract_dict, return_type="list")
     zip_file = zipfile.ZipFile(zip_path, 'r')
@@ -70,7 +84,9 @@ def extract(zip_path, project_dir, extract_dict):
     return extracted_paths
 
 def download_dem(s2_path, out_dir):
-    dem_path = get_copernicus_dem(s2_path, out_dir)
+    prefixes = dl.prefixes.get_from_raster(s2_path, 30)
+    dem_path = dl.download.from_aws(prefixes, 30, f"{out_dir}/10_DEM.tif")
+    # dem_path = get_copernicus_dem(s2_path, out_dir)
     return dem_path
 
 def clip_dem(dem_path, target_raster_path, project_dir):
@@ -157,6 +173,7 @@ def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delet
     print(f"o---o---o---o---o---o---o\tNot Started \t\t\t(0/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
     if extract_dict is None:
         extract_dict = EXTRACT_DICT
+
     s2_paths_list = extract(s2_zip_path, project_dir, extract_dict)
     target_raster_path = s2_paths_list[0]
     print(f"•---o---o---o---o---o---o\tSentinel bands extracted \t(1/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
@@ -173,7 +190,8 @@ def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delet
     print(f"•---•---•---•---o---o---o\tDEM processed \t\t\t(4/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
     mtic=time.time()
 
-    reprojected_raster_paths = reproject(*all_paths_list, target_raster_path = target_raster_path)
+    # reprojected_raster_paths = reproject(*all_paths_list, target_raster_path = target_raster_path)
+    reprojected_raster_paths = all_paths_list
     print(f"•---•---•---•---•---o---o\tReprojections completed \t(5/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
     mtic=time.time()
 
@@ -194,7 +212,6 @@ def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delet
         Path(stacked_path).unlink()
         print("Unnecessary project files removed.")
 
-
     return tile_dir
 
 def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_dict=None, set_type='inference', delete_all=True):
@@ -206,11 +223,12 @@ def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_dict=N
     if extract_dict is None:
         extract_dict = EXTRACT_DICT
 
-    s2_list, dem_list = [], []
+    s2_list, dem_list, extract_folder_list = [], [], []
     stacked_training_s2_paths, stacked_training_dem_paths, stacked_inference_paths = [], [], []
     for k, s2_zip_path in enumerate(s2_zip_paths):
         step_folder = project_dir/s2_zip_path.stem
         step_folder.mkdir(parents=True, exist_ok=True)
+        extract_folder_list.append(step_folder)
         
         step_s2_list = extract(s2_zip_path, step_folder, extract_dict)
         print(f"•---o---o---o---o---o---o\tSentinel bands extracted \t({7*k+1}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
@@ -285,7 +303,14 @@ def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_dict=N
         for stacked_path in stacked_paths:
             Path(stacked_path).unlink()
 
-        Path(merged_path).unlink()
+        if set_type == 'inference': Path(merged_path).unlink()
+        if set_type == 'training':
+            merged_dem_path.unlink()
+            merged_s2_path.unlink()
+
+        for extract_folder in extract_folder_list:
+            shutil.rmtree(extract_folder)
+
         print("Unnecessary project files removed.")
 
 

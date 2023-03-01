@@ -1,102 +1,142 @@
 import floodsens.preprocessing as preprocessing
 import floodsens.inference as inference
+import floodsens.utils as utils
+import floodsens.ndwi as ndwi
+from floodsens.logger import logger
+from floodsens.model import FloodsensModel
+from floodsens.event import Event
+
 from pathlib import Path
+import yaml
 
+class Project(object):
+    def __init__(self, project_folder, models=None, event_collection=None, event=None):
+        self.project_folder = Path(project_folder)
 
-class Project():
-    def __init__(self, root, zip_paths, tile_dir=None, inferred_dir=None, 
-                    inferred_path=None, model_path=None, cuda=True):
-        self.root = Path(root)
+        if not self.project_folder.exists():
+            self.project_folder.mkdir(parents=True)
 
-        if isinstance(zip_paths, str):
-            self.zip_paths = [Path(zip_paths)]
-        elif isinstance(zip_paths, list):
-            self.zip_paths = [Path(x) for x in zip_paths]
+        if models is None:
+            self.models = {}
+        elif isinstance(models, dict):
+            self.models = models
+        elif isinstance(models, list):
+            self.models = {model.name: model for model in models}
+        elif isinstance(models, FloodsensModel):
+            self.models = {models.name: models}
         else:
-            raise TypeError("zip_paths must be a string or a list of strings")
+            raise ValueError(f"models must be of type dict, list, or FloodsensModel. Got {type(models)} instead.")
 
-        if model_path is None: self.model_path = None
-        else: self.model_path = model_path
+        if event_collection is None:
+            self.event_collection = {}
+        elif isinstance(event_collection, dict):
+            self.event_collection = event_collection
+        elif isinstance(event_collection, list):
+            self.event_collection = {event.name: event for event in event_collection}
+        elif isinstance(event_collection, Event):
+            self.event_collection = {event_collection.name: event_collection}
+        else:
+            raise ValueError(f"event_collection must be of type dict, list, or Event. Got {type(event_collection)} instead.")
 
-        if tile_dir is None: self.tile_dir = None
-        else: self.tile_dir = Path(tile_dir)
-        
-        if inferred_dir is None: self.inferred_dir = None
-        else: self.inferred_dir = Path(inferred_dir)
+        if event is not None:
+            self.event = event
 
-        if inferred_path is None: self.inferred_path = None
-        else: self.inferred_path = Path(inferred_path)
+        self.save_to_yaml()
 
-        self.cuda = cuda
-        self.clean = True
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({self.project_folder}, {self.event_collection}, {self.models})'
 
-    def __repr__(self):
-        if self.tile_dir is None: tile_dir = "(not set)" 
-        else: tile_dir = self.tile_dir
-        if self.model_path is None: model_path = "(not set)"
-        else: model_path = self.model_path
-        if self.inferred_dir is None: inferred_dir = "(not set)"
-        else: inferred_dir = self.inferred_dir
-        if self.inferred_path is None: inferred_path = "(not set)"
-        else: inferred_path = self.inferred_path
-        
+    def __str__(self) -> str:
+        # print the project folder
+        output = f"Project folder:\n\t{self.project_folder}\n\n"
 
-        repr_str = f'Project Folder:\t\t{self.root}\n'
-        repr_str +=f'Sentinel Archives:\t{len(self.zip_paths)}\n'
-        repr_str +=f'Model:\t\t\t{model_path}\n'
-        repr_str +=f'Preprocessed Tiles:\t{tile_dir}\n'
-        repr_str +=f'Inferred Tiles:\t\t{inferred_dir}\n'
-        repr_str +=f'Inferred Map:\t\t{inferred_path}'
+        # print the models details
+        output += f"Models:\n"
+        for name, model in self.models.items():
+            output += f"\t{name}:\n"
+            # output += f"\t\t{model}\n"
 
-        return repr_str
+        # print the event details
+        output += f"\nActivated Event:\n"
+        output += f"\t{self.event.name}\n\n"
+        # output += f"\t{self.event}\n\n"
+
+        # print the event collection details
+        output += f"Event collection:\n"
+        for name, event in self.event_collection.items():
+            output += f"\t{name}\n"
+            # output += f"\t\t{event}\n"
+
+        return output
 
     @classmethod
-    def from_folder(cls, root, model_path=None):
-        zip_path = list((Path(root)/'zip').iterdir())[0] # TODO DO BETTER
-        project = cls(root, zip_path)
+    def from_yaml(cls, filename):
+        with open(filename, "r") as f:
+            data = yaml.load(f, Loader=yaml.Loader)
 
-        project.model_path = model_path
-        
-        tile_dir = Path(root)/'tiles'/'stacked'
-        if not tile_dir.exists(): tile_dir = None
-        project.tile_dir = tile_dir
-        
-        inferred_dir = Path(root)/'tiles'/'out_tiles'
-        if not inferred_dir.exists(): inferred_dir = None
-        project.inferred_dir = inferred_dir
+        return cls(**data)
 
-        inferred_path = Path(root)/'map'/'merged_map.tif'
-        if not inferred_path.exists(): inferred_path = None
-        project.inferred_path = inferred_path
+    def save_to_yaml(self, overwrite=False):
+        filename = self.project_folder/"project_checkpoint.yaml"
+        if not overwrite and filename.exists():
+            logger.warning(f"\"{filename.parent}\" project folder already exists. Load the project from this file or start new project in separate folder.")
+            interrupt = input("Do you want to overwrite the existing project? (y/n): ")
+            if interrupt.lower() == "y":
+                logger.info("Overwriting existing project.")
+            else:
+                logger.info("Exiting without overwriting.")
+                return
 
-        return project
+        project_data = self.__dict__
 
-    def default_preprocessing(self, set_type='inference'):
-        if len(self.zip_paths) == 1:
-            self.tile_dir = preprocessing.run_default_preprocessing(self.root, self.zip_paths[0], delete_all=self.clean)
-        else:
-            self.tile_dir = preprocessing.run_multiple_default_preprocessing(self.root, self.zip_paths, delete_all=self.clean, set_type=set_type)
+        with open(filename, "w") as f:
+            yaml.dump(project_data, f)
 
-    def choose_model(self):
-        model_paths = [x for x in Path('models').iterdir() if x.is_dir()]       
-        print("Available models:\n", *[f"\t{k+1}) {x.name}\n" for k, x in enumerate(model_paths)])
-        model_idx = int(input("Type Number of model to load it\n"))
-        model_path = model_paths[int(model_idx)-1]/"model.pth.tar"
-        self.model_path = model_path
+    def activate_event(self, event_name):
+        self.event = self.event_collection[event_name]
+        logger.info(f"Event {self.event.name} activated.")
 
-    def load_model(self, model_path):
-        self.model_path = model_path
+    def choose_event(self):
+        for i, event in enumerate(self.event_collection.keys()):
+            print(f"{i+1}: {event}")
+        choice = int(input("Choose an event by entering corresponding integer: "))
+        self.activate_event(list(self.event_collection.keys())[choice-1])
 
-    def inference(self):
-        self.inferred_dir = inference.run_inference(self.model_path, self.tile_dir, cuda=self.cuda)
+    def load_models(self, model_folder):
+        loaded_models = {}
+        model_paths = list(Path(model_folder).rglob("*.tar"))
+        for model_path in model_paths:
+            model = FloodsensModel(model_path)
+            loaded_models[model.name] = model
 
-    def save_map(self, out_path=None):
-        if out_path is None:
-            self.inferred_path = inference.create_map(self.tile_dir, self.inferred_dir)
+        self.models = loaded_models
+        logger.info(f"{len(self.models)} models loaded.")
 
-        else:
-            out_path = Path(out_path)
-            self.inferred_path = inference.create_map(self.tile_dir, 
-                                                    self.inferred_dir, 
-                                                    out_dir=out_path.parent, 
-                                                    out_name=out_path.name)
+        for model in self.models.values():
+            logger.info(f"Model {model.name} loaded.")
+
+    def download_sentinel2(self): #TODO with Google Earth Engine
+        raise NotImplementedError("Download Sentinel-2 images from Copernicus Open Access Hub")
+
+    def load_event(self, yaml_path):
+        event = Event.from_yaml(yaml_path)
+        self.event_collection[event.name] = event
+        return event
+
+    def add_event(self, event_name, sentinel_archives, model=None):
+        event_folder = self.project_folder/event_name
+
+        if model is None and len(self.models) > 0:
+            for i, model_name in enumerate(self.models.keys()):
+                print(f"{i+1}: {model_name}")
+            choice = int(input("Choose a model by entering corresponding integer: "))
+            model = self.models[list(self.models.keys())[choice-1]]
+
+        event = Event(event_folder, sentinel_archives, model)
+        self.event_collection[event.name] = event
+
+        if len(self.event_collection) == 1:
+            self.event = event
+
+        event.save_to_yaml()
+        return event

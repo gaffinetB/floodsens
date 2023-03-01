@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-
 import torchvision.transforms.functional as TF
 
+from pathlib import Path
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -114,3 +114,28 @@ class MainNET(nn.Module):
 
             if isinstance(m, nn.Conv2d):
                 nn.init.xavier_uniform_(m.weight)
+
+
+class FloodsensModel():
+    def __init__(self, path, name=None, means=None, stds=None, channels=None, device="cpu"):
+        model_dict = torch.load(path, map_location=torch.device(device))
+        self.path = Path(path)
+
+        self.name = self.path.stem if name is None else name
+        self.means = means if means is not None else model_dict["model_means"]
+        self.stds = stds if stds is not None else model_dict["model_stds"]
+
+        if channels is not None:
+            self.channels = channels
+        elif len(self.stds) == 14:
+            self.channels = [0,1,2,3,4,5,6,7,8,9,10,11,12,13]
+    
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.path}, {self.name}, {self.channels}, {self.means}, {self.stds})'.format(self=self)
+    
+    def __str__(self) -> str:
+        s = f"\tName: {self.name}\n" 
+        s += f"\t\tPath: {self.path}\n" 
+        s += f"\t\tNumber of Channels: {len(self.channels)}\n" 
+
+        return s
