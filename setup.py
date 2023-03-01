@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "floodsens",
-    version = "0.1.8",
+    version = "0.2.0",
     author = "Ben Gaffinet",
     author_email = "ben@gaffinet.lu",
     packages = find_packages(include=['floodsens'], exclude=['tests', 'notebooks']),
