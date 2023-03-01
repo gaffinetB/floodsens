@@ -48,23 +48,24 @@ class Project(object):
 
     def __str__(self) -> str:
         # print the project folder
-        output = f"Project folder: {self.project_folder}\n"
-
-        # print the event details
-        output += f"Activated Event:\n"
-        output += f"\t{self.event}\n\n"
-
-        # print the event collection details
-        output += f"Event collection:\n"
-        for name, event in self.event_collection.items():
-            output += f"\t{name}:\n"
-            output += f"\t\t{event}\n"
+        output = f"Project folder:\n\t{self.project_folder}\n\n"
 
         # print the models details
         output += f"Models:\n"
         for name, model in self.models.items():
             output += f"\t{name}:\n"
-            output += f"\t\t{model}\n"
+            # output += f"\t\t{model}\n"
+
+        # print the event details
+        output += f"\nActivated Event:\n"
+        output += f"\t{self.event.name}\n\n"
+        # output += f"\t{self.event}\n\n"
+
+        # print the event collection details
+        output += f"Event collection:\n"
+        for name, event in self.event_collection.items():
+            output += f"\t{name}\n"
+            # output += f"\t\t{event}\n"
 
         return output
 

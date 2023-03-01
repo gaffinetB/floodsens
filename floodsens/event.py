@@ -44,8 +44,8 @@ class Event(object):
         if self.ndwi_raster:
             s += f"\tNDWI raster: {self.ndwi_raster}\n\n"
  
-        s += "\tModel:\n"
-        s += str(self.model)
+        s += f"\tModel: {self.model.name}"
+        # s += str(self.model)
         
         return s
 
@@ -93,9 +93,9 @@ class Event(object):
         
         event_data = self.__dict__
         
-        if self.model is not None:
-            model_data = event_data.pop("model")
-            event_data["model"] = model_data.__dict__
+        # if self.model is not None:
+        #     model_data = event_data.pop("model")
+        #     event_data["model"] = model_data.__dict__
 
         with open(filename, "w") as f:
             yaml.dump(event_data, f)
