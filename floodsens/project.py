@@ -13,6 +13,9 @@ class Project(object):
     def __init__(self, project_folder, models=None, event_collection=None, event=None):
         self.project_folder = Path(project_folder)
 
+        if not self.project_folder.exists():
+            self.project_folder.mkdir(parents=True)
+
         if models is None:
             self.models = {}
         elif isinstance(models, dict):
@@ -38,6 +41,8 @@ class Project(object):
         if event is not None:
             self.event = event
 
+        self.save_to_yaml(True)
+
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.project_folder}, {self.event_collection}, {self.models})'
 
@@ -47,7 +52,7 @@ class Project(object):
 
         # print the event details
         output += f"Activated Event:\n"
-        output += f"\t{self.event}\n"
+        output += f"\t{self.event}\n\n"
 
         # print the event collection details
         output += f"Event collection:\n"
@@ -67,11 +72,14 @@ class Project(object):
     def from_yaml(cls, filename):
         with open(filename, "r") as f:
             data = yaml.load(f, Loader=yaml.Loader)
-        
+
         return cls(**data)
 
-    def save_to_yaml(self): #TODO
-        filename = f"{self.project_folder}/project_checkpoint.yaml"
+    def save_to_yaml(self, overwrite=False):
+        filename = self.project_folder/"project_checkpoint.yaml"
+        if not overwrite and filename.exists():
+            raise FileExistsError(f"\"{filename.parent}\" project folder already exists. Load the project from this file or start new project in separate folder.")
+
         project_data = self.__dict__
 
         with open(filename, "w") as f:
@@ -103,14 +111,25 @@ class Project(object):
     def download_sentinel2(self): #TODO with Google Earth Engine
         raise NotImplementedError("Download Sentinel-2 images from Copernicus Open Access Hub")
 
-    def add_event(self, yaml_path):
+    def load_event(self, yaml_path):
         event = Event.from_yaml(yaml_path)
         self.event_collection[event.name] = event
         return event
 
-    def add_new_event(self, event_name, sentinel_archive, model):
+    def add_event(self, event_name, sentinel_archives, model=None):
         event_folder = self.project_folder/event_name
-        event = Event(event_folder, sentinel_archive, model)
+
+        if model is None and len(self.models) > 0:
+            for i, model_name in enumerate(self.models.keys()):
+                print(f"{i+1}: {model_name}")
+            choice = int(input("Choose a model by entering corresponding integer: "))
+            model = self.models[list(self.models.keys())[choice-1]]
+
+        event = Event(event_folder, sentinel_archives, model)
         self.event_collection[event.name] = event
-        event.save_to_yaml()
+
+        if len(self.event_collection) == 1:
+            self.event = event
+
+        # event.save_to_yaml()
         return event
