@@ -41,7 +41,7 @@ class Project(object):
         if event is not None:
             self.event = event
 
-        self.save_to_yaml(True)
+        self.save_to_yaml()
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.project_folder}, {self.event_collection}, {self.models})'
@@ -79,7 +79,13 @@ class Project(object):
     def save_to_yaml(self, overwrite=False):
         filename = self.project_folder/"project_checkpoint.yaml"
         if not overwrite and filename.exists():
-            raise FileExistsError(f"\"{filename.parent}\" project folder already exists. Load the project from this file or start new project in separate folder.")
+            logger.warning(f"\"{filename.parent}\" project folder already exists. Load the project from this file or start new project in separate folder.")
+            interrupt = input("Do you want to overwrite the existing project? (y/n): ")
+            if interrupt.lower() == "y":
+                logger.info("Overwriting existing project.")
+            else:
+                logger.info("Exiting without overwriting.")
+                return
 
         project_data = self.__dict__
 
@@ -98,7 +104,7 @@ class Project(object):
 
     def load_models(self, model_folder):
         loaded_models = {}
-        model_paths = [x for x in Path(model_folder).iterdir() if x.suffix == ".tar"]
+        model_paths = list(Path(model_folder).rglob("*.tar"))
         for model_path in model_paths:
             model = FloodsensModel(model_path)
             loaded_models[model.name] = model
@@ -132,5 +138,5 @@ class Project(object):
         if len(self.event_collection) == 1:
             self.event = event
 
-        # event.save_to_yaml()
+        event.save_to_yaml()
         return event

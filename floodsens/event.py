@@ -45,7 +45,6 @@ class Event(object):
             s += f"\tNDWI raster: {self.ndwi_raster}\n\n"
  
         s += f"\tModel: {self.model.name}"
-        # s += str(self.model)
         
         return s
 
@@ -54,7 +53,13 @@ class Event(object):
             raise ValueError(f"Model not found at {self.model} or not of type FloodsensModel.")
 
         if self.inferred_raster is not None:
-            logger.warn(f"Overwriting existing inferred raster at {self.inferred_raster}.")
+            logger.warn(f"{self.inferred_raster} already exists and will be overwritten if you choose to continue.")
+            interrupt = input("Do you want to continue? (y/n): ")
+            if interrupt.lower() == "n":
+                logger.info("Stopping FloodSENS run.")
+                return
+            else:
+                logger.info("Continuing FloodSENS run. This may take a while...")
 
         preprocessed_tiles_folder = preprocessing.run_multiple_default_preprocessing(self.event_folder, self.sentinel_archives, delete_all=True, set_type="inference")
         logger.info(f"Successfully preprocessed {len(self.sentinel_archives)} Sentinel Archives.")
@@ -68,7 +73,9 @@ class Event(object):
         shutil.rmtree(preprocessed_tiles_folder.parent)
 
         logger.info(f"Successfully cleaned up intermediate products.")
-        logger.info(f"Successfully ran FloodSENS on {self.sentinel_archives}.") 
+        logger.info(f"Successfully ran FloodSENS on {self.sentinel_archives}.")
+
+        self.save_to_yaml()
 
     def run_ndwi(self): #TODO: Implement NDWI
         raise NotImplementedError(f"This feature has not been implemented yet.")
@@ -87,15 +94,10 @@ class Event(object):
         
         return preprocessed_tiles_folder
 
-    #FIXME Changes model type from FloodsensModel to dict accidentally
     def save_to_yaml(self):
         filename = f"{self.event_folder}/event_checkpoint.yaml"
         
         event_data = self.__dict__
-        
-        # if self.model is not None:
-        #     model_data = event_data.pop("model")
-        #     event_data["model"] = model_data.__dict__
 
         with open(filename, "w") as f:
             yaml.dump(event_data, f)
