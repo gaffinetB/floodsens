@@ -1,15 +1,21 @@
-import floodsens.preprocessing as preprocessing
-import floodsens.inference as inference
-import floodsens.utils as utils
-import floodsens.ndwi as ndwi
+"""project module containing the Project class to manage multiple models and events."""
+from pathlib import Path
+import yaml
 from floodsens.logger import logger
 from floodsens.model import FloodsensModel
 from floodsens.event import Event
 
-from pathlib import Path
-import yaml
+class Project():
+    """Project class to manage multiple models and events.
+    A project instance can contain multiple events in its attribute event_collection.
+    To access the processing methods the event must be activated by calling the activate_event 
+    method. If a single event is passed to the constructor, it will be activated automatically.
 
-class Project(object):
+    Arguments:
+        project_folder {str, Path} -- Path to the project folder.
+        (optional) models {dict, list, FloodsensModel} -- Dictionary of FloodsensModel, list of FloodsensModel, or single FloodsensModel.
+        (optional) event_collection {dict, list, Event} -- Dictionary of events, list of events, or single event.
+        (optional) event {Event} -- Event to be activated."""
     def __init__(self, project_folder, models=None, event_collection=None, event=None):
         self.project_folder = Path(project_folder)
 
@@ -51,19 +57,19 @@ class Project(object):
         output = f"Project folder:\n\t{self.project_folder}\n\n"
 
         # print the models details
-        output += f"Models:\n"
-        for name, model in self.models.items():
+        output += "Models:\n"
+        for name, _ in self.models.items():
             output += f"\t{name}:\n"
             # output += f"\t\t{model}\n"
 
         # print the event details
-        output += f"\nActivated Event:\n"
+        output += "\nActivated Event:\n"
         output += f"\t{self.event.name}\n\n"
         # output += f"\t{self.event}\n\n"
 
         # print the event collection details
-        output += f"Event collection:\n"
-        for name, event in self.event_collection.items():
+        output += "Event collection:\n"
+        for name, _ in self.event_collection.items():
             output += f"\t{name}\n"
             # output += f"\t\t{event}\n"
 
@@ -71,12 +77,21 @@ class Project(object):
 
     @classmethod
     def from_yaml(cls, filename):
-        with open(filename, "r") as f:
-            data = yaml.load(f, Loader=yaml.Loader)
+        """Load a Project object from a yaml file.
+
+        Arguments:
+            filename {str, Path} -- Path to the yaml file."""
+        with open(filename, "r") as istream:
+            data = yaml.load(istream, Loader=yaml.Loader)
 
         return cls(**data)
 
     def save_to_yaml(self, overwrite=False):
+        """Save the Project object to a yaml file. Can be loaded with the from_yaml method.
+
+        Arguments:
+            overwrite {bool} -- Overwrite existing project folder.
+        """
         filename = self.project_folder/"project_checkpoint.yaml"
         if not overwrite and filename.exists():
             logger.warning(f"\"{filename.parent}\" project folder already exists. Load the project from this file or start new project in separate folder.")
@@ -84,25 +99,36 @@ class Project(object):
             if interrupt.lower() == "y":
                 logger.info("Overwriting existing project.")
             else:
-                logger.info("Exiting without overwriting.")
+                logger.info("Existing without overwriting.")
                 return
 
         project_data = self.__dict__
 
-        with open(filename, "w") as f:
-            yaml.dump(project_data, f)
+        with open(filename, "w") as ostream:
+            yaml.dump(project_data, ostream)
 
     def activate_event(self, event_name):
+        """Activate an event from the event_collection that matches the event_name.
+
+        Arguments:
+            event_name {str} -- Name of the event to be activated."""
         self.event = self.event_collection[event_name]
         logger.info(f"Event {self.event.name} activated.")
 
     def choose_event(self):
+        """Shows a list of all events in the event_collection and lets the user choose one.
+        Chosen event will be activated."""
         for i, event in enumerate(self.event_collection.keys()):
             print(f"{i+1}: {event}")
         choice = int(input("Choose an event by entering corresponding integer: "))
         self.activate_event(list(self.event_collection.keys())[choice-1])
 
     def load_models(self, model_folder):
+        """Load models from a folder and its subfolders.
+        All models must be saved as .tar files.
+
+        Arguments:
+            model_folder {str, Path} -- Path to the folder containing the models."""
         loaded_models = {}
         model_paths = list(Path(model_folder).rglob("*.tar"))
         for model_path in model_paths:
@@ -116,14 +142,25 @@ class Project(object):
             logger.info(f"Model {model.name} loaded.")
 
     def download_sentinel2(self): #TODO with Google Earth Engine
-        raise NotImplementedError("Download Sentinel-2 images from Copernicus Open Access Hub")
+        """ WARNING NOT IMPLEMENTED"""
+        raise NotImplementedError("Not implemented. Please download Sentinel-2 images manually (e.g. from Copernicus Open Access Hub)")
 
     def load_event(self, yaml_path):
+        """Load an existing event from a yaml file.
+
+        Arguments:
+            yaml_path {str, Path} -- Path to the yaml file containing the event."""
         event = Event.from_yaml(yaml_path)
         self.event_collection[event.name] = event
         return event
 
     def add_event(self, event_name, sentinel_archives, model=None):
+        """Add a new event to the event_collection.
+
+        Arguments:
+            event_name {str} -- Name of the event.
+            sentinel_archives {list} -- List of Sentinel-2 archives.
+            model {FloodsensModel} -- Model to be used for the event. If None, the user will be asked to choose a model."""
         event_folder = self.project_folder/event_name
 
         if model is None and len(self.models) > 0:

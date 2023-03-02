@@ -37,15 +37,15 @@ class Event(object):
     def __str__(self) -> str:
         s = f"Event folder: {self.event_folder}\n"
         s += f"\tNumber of Sentinel archives: {len(self.sentinel_archives)}\n"
-        
+
         if self.inferred_raster:
             s += f"\tInferred raster: {self.inferred_raster}\n"
-            
+
         if self.ndwi_raster:
             s += f"\tNDWI raster: {self.ndwi_raster}\n\n"
- 
+
         s += f"\tModel: {self.model.name}"
-        
+
         return s
 
     def run_floodsens(self, preprocessed_tiles_folder=None):
@@ -91,17 +91,17 @@ class Event(object):
             label_path = Path(label_path)
             # TODO Rasterize, Binarize, Tile
             raise NotImplementedError(f"This feature has not been implemented yet.")
-        
+
         return preprocessed_tiles_folder
 
     def save_to_yaml(self):
         filename = f"{self.event_folder}/event_checkpoint.yaml"
-        
+
         event_data = self.__dict__
 
         with open(filename, "w") as f:
             yaml.dump(event_data, f)
-    
+
     @classmethod
     def from_yaml(cls, yaml_path):
         with open(yaml_path, "r") as f:
