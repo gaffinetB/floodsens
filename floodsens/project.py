@@ -1,4 +1,4 @@
-"""project module containing the Project class to manage multiple models and events."""
+"""The project module contains the Project class to manage multiple models and events."""
 from pathlib import Path
 import yaml
 from floodsens.logger import logger
@@ -8,14 +8,23 @@ from floodsens.event import Event
 class Project():
     """Project class to manage multiple models and events.
     A project instance can contain multiple events in its attribute event_collection.
-    To access the processing methods the event must be activated by calling the activate_event 
+    To access the processing methods the event must be activated by calling the activate_event
     method. If a single event is passed to the constructor, it will be activated automatically.
 
     Arguments:
         project_folder {str, Path} -- Path to the project folder.
         (optional) models {dict, list, FloodsensModel} -- Dictionary of FloodsensModel, list of FloodsensModel, or single FloodsensModel.
         (optional) event_collection {dict, list, Event} -- Dictionary of events, list of events, or single event.
-        (optional) event {Event} -- Event to be activated."""
+        (optional) event {Event} -- Event to be activated.
+
+    Methods:
+        choose_event / activate_event -- Activate an event. Required to access the processing methods.
+        save_to_yaml -- Save the project checkpoint to a yaml file.
+        load_from_yaml -- Load a project from a yaml checkpoint file.
+        load_models -- Load all models from a folder and its subfolders.
+        load_event -- Load existing event from yaml checkpoint file.
+        add_event -- Add a new event to the project.
+        """
     def __init__(self, project_folder, models=None, event_collection=None, event=None):
         self.project_folder = Path(project_folder)
 
