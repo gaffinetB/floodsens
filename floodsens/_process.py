@@ -4,6 +4,7 @@ import numpy as np
 from osgeo import gdal
 from osgeo import gdalconst
 import subprocess
+from floodsens.logger import logger
 
 def slope(dem_path, out_dir):
     out_path = Path(out_dir)/"11_Slope.tif"
@@ -27,41 +28,44 @@ def flow_accumulation(dem_path, out_dir, out_name="12_Flowaccumulation.tif"):
     flow_accumulation_array:    ndarray
                 ndarray of the computed flow accumulation
     """
-    grid = Grid.from_raster(dem_path, data_name='dem')
-    dem = grid.dem
+    grid = Grid.from_raster(dem_path)
+    logger.debug("Grid created")
+    dem = grid.read_raster(dem_path)
+    logger.debug("DEM read")
+    dem = grid.fill_depressions(dem)
+    logger.debug("Depressions filled")
+    dem = grid.resolve_flats(dem)
+    logger.debug("Flats resolved")
+    dem = grid.flowdir(dem)
+    logger.debug("Flow direction calculated")
+    flowaccumulation = grid.accumulation(dem, inplace=True)
+    logger.debug("Flow accumulation calculated")
+    logger.debug(f"{flowaccumulation.shape}")
 
-    grid.fill_depressions(data='dem', out_name='flooded_dem')
-    
-    grid.resolve_flats(data='flooded_dem', out_name='inflated_dem')
-    
-    grid.flowdir(data='inflated_dem', out_name='dir')
-    
-    flow_accumulation_array = grid.accumulation(data='dir', inplace=False)
-    
     out_path = out_dir/out_name
     driver = gdal.GetDriverByName('GTiff')
     driver.Register()
 
     outds = driver.Create(str(out_path), xsize=dem.shape[1], ysize=dem.shape[0],
                           bands=1, eType=gdal.GDT_Float32)
-    
+
     ds = gdal.Open(str(dem_path), gdal.GA_ReadOnly)
     outds.SetGeoTransform(ds.GetGeoTransform())
     outds.SetProjection(ds.GetProjection())
 
     outband = outds.GetRasterBand(1)
-    outband.WriteArray(flow_accumulation_array)
+    outband.WriteArray(flowaccumulation)
     outband.SetNoDataValue(np.nan)
     outband.FlushCache()
     outband = None
-    outds = None    
-    
+    outds = None
+
     return grid, out_path
 
 def hand(grid, dem_path, flow_accumulation_path, out_dir, out_name="13_HAND.tif"):
     flow_accumulation_array = gdal.Open(str(flow_accumulation_path)).ReadAsArray()
 
-    HAND = grid.compute_hand('dir', 'dem', flow_accumulation_array>1, inplace=False)
+    hand_array = grid.compute_hand('dir', 'dem', flow_accumulation_array>1, inplace=False)
     out_path = out_dir/out_name
     driver = gdal.GetDriverByName('GTiff')
     driver.Register()
@@ -72,7 +76,7 @@ def hand(grid, dem_path, flow_accumulation_path, out_dir, out_name="13_HAND.tif"
     outds.SetProjection(ds.GetProjection())
 
     outband = outds.GetRasterBand(1)
-    outband.WriteArray(HAND)
+    outband.WriteArray(hand_array)
     outband.SetNoDataValue(np.nan)
     outband.FlushCache()
     outband = None
@@ -121,7 +125,7 @@ def fix_hand(hand_path, overwrite=True):
 
     if overwrite: out_path = hand_path
     else: out_path = hand_path.parent/f"f{hand_path.name}"
-    
+
     driver = gdal.GetDriverByName("GTiff")
     driver.Register()
     outds = driver.Create(str(out_path),
