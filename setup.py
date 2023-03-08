@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "floodsens",
-    version = "0.2.0",
+    version = "0.2.1",
     author = "Ben Gaffinet",
     author_email = "ben@gaffinet.lu",
     packages = find_packages(include=['floodsens'], exclude=['tests', 'notebooks']),
@@ -17,7 +17,7 @@ setup(
         'boto3',
         'botocore',
         'pyproj',
-        'pysheds==0.2.7',
+        'pysheds',
         'numpy',
         'torch',
         'torchvision',
@@ -26,12 +26,12 @@ setup(
     ],
     dependency_links = [],
     description = "Flood Segmentation on Sentinel-2 images based on Machine Learning Models",
-    license = 'GPLv3',
+    license = 'MIT',
     keywords = "flood gis sentinel copernicus ai",
     url = "https://github.com/gaffinetB/floodsens",
     classifiers = ['Development Status :: 2 - Pre-Alpha',
                    'Topic :: Scientific/Engineering :: Artificial Intelligence',
                    'Topic :: Scientific/Engineering :: GIS',
                    'Intended Audience :: Science/Research',
-                   'Programming Language :: Python :: 3.6']
+                   'Programming Language :: Python :: 3.8']
 )
