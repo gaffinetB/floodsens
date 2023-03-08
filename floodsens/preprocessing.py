@@ -1,108 +1,88 @@
 import time
 import zipfile
 import shutil
+from pathlib import Path
 from osgeo import gdal
 from osgeo import gdalconst
-from pathlib import Path
-from floodsens._tile import singleraster_tiling
-from floodsens._download import get_copernicus_dem
-from floodsens._process import flow_accumulation, hand, slope, twi
-from floodsens._reproject import reproject_set, reproject_from_raster
-from floodsens.constants import EXTRACT_DICT
 import demloader as dl
+from floodsens._tile import singleraster_tiling
+from floodsens._dem import flow_accumulation, hand, slope, twi, download_dem
+from floodsens._reproject import reproject_set, reproject_from_raster
+from floodsens.utils import extract
+from floodsens.constants import EXTRACT_LIST
 
+# def _filter_zip(zip_path, extract_dict, return_type='list'):
+#     files = zipfile.ZipFile(zip_path, 'r').namelist()
 
-def _rm_tree(path):
-    path = Path(path)
-    for child in path.glob('*'):
-        if child.is_file():
-            child.unlink()
-        else:
-            _rm_tree(child)
-    path.rmdir()
+#     filtered_list = []
+#     filtered_dict = {}
+#     for key in extract_dict.keys():
+#         for value in extract_dict[key]:
+#             matched_files = [x for x in files if key in x and value in x]
+#             if len(matched_files) == 1:
+#                 matched_file = matched_files[0]
+#                 filtered_list.append(matched_file)
+#                 filtered_dict[value] = matched_file
+#             elif len(matched_files) == 0:
+#                 continue
+#             else:
+#                 raise ValueError(f"Filtering zip archive failed.. matched_files = {matched_files}")
 
-def _filter_zip(zip_path, extract_dict, return_type='list'):
-    files = zipfile.ZipFile(zip_path, 'r').namelist()
+#     if return_type == 'list':
+#         return filtered_list
+#     elif return_type == 'dict':
+#         return filtered_dict
+#     else:
+#         return None
+
+# def extract(zip_path, project_dir, extract_dict):
+#     """Extracts files from zip archive according to extract_dict.
+#     Returns list of paths of extracted files.
     
-    filtered_list = []
-    filtered_dict = {}
-    for key in extract_dict.keys():
-        for value in extract_dict[key]:
-            matched_files = [x for x in files if key in x and value in x]
-            if len(matched_files) == 1:
-                matched_file = matched_files[0]
-                filtered_list.append(matched_file)
-                filtered_dict[value] = matched_file
-            elif len(matched_files) == 0:
-                continue
-            else:
-                raise ValueError(f"Filtering zip archive failed.. matched_files = {matched_files}")
-
-    if return_type == 'list':
-        return filtered_list
-    elif return_type == 'dict':
-        return filtered_dict
-    else:
-        return None
-
-def extract(zip_path, project_dir, extract_dict):
-    """Extracts files from zip archive according to extract_dict.
-    Returns list of paths of extracted files.
+#     Parameters
+#     ----------
+#     zip_path : Path
+#         Path to zip archive
+#     project_dir : Path
+#         Path to project directory
+#     extract_dict : dict
+#         Dictionary with keys as resolution and values as bands to extract.
+#     """
+#     project_dir = Path(project_dir)
+#     filtered_files = _filter_zip(zip_path, extract_dict, return_type="list")
+#     zip_file = zipfile.ZipFile(zip_path, 'r')
     
-    Parameters
-    ----------
-    zip_path : Path
-        Path to zip archive
-    project_dir : Path
-        Path to project directory
-    extract_dict : dict
-        Dictionary with keys as resolution and values as bands to extract.
-    """
-    project_dir = Path(project_dir)
-    filtered_files = _filter_zip(zip_path, extract_dict, return_type="list")
-    zip_file = zipfile.ZipFile(zip_path, 'r')
+#     extracted_paths = []
+#     for file in filtered_files:
+#         zip_file.extract(file, project_dir)
+#         file = project_dir/file
+#         new_name = project_dir/file.name
+#         file.rename(new_name)
+#         extracted_paths.append(new_name)
+
+#     extracted_paths.sort()
+
+#     try: 
+#         shutil.rmtree(project_dir/f"{zip_path.stem}.SAFE")
+#     except:
+#         print(f"No folder found to remove at {project_dir/f'{zip_path.stem}.SAFE'}")
     
-    extracted_paths = []
-    for file in filtered_files:
-        zip_file.extract(file, project_dir)
-        file = project_dir/file
-        new_name = project_dir/file.name
-        file.rename(new_name)
-        extracted_paths.append(new_name)
+#     if len(extracted_paths) == 0:
+#         print(f"Prameters used: {extract_dict}, files extracted: {extracted_paths}, files in zip: {filtered_files}")
+#         raise ValueError(f"No files extracted from {zip_path}")
 
-    extracted_paths.sort()
-
-    try: 
-        _rm_tree(project_dir/f"{zip_path.stem}.SAFE")
-    except:
-        print(f"No folder found to remove at {project_dir/f'{zip_path.stem}.SAFE'}")
-    
-    if len(extracted_paths) == 0:
-        print(f"Prameters used: {extract_dict}, files extracted: {extracted_paths}, files in zip: {filtered_files}")
-        raise ValueError(f"No files extracted from {zip_path}")
-
-    return extracted_paths
-
-def download_dem(s2_path, out_dir):
-    prefixes = dl.prefixes.get_from_raster(s2_path, 30)
-    dem_path = dl.download.from_aws(prefixes, 30, f"{out_dir}/10_DEM.tif")
-    # dem_path = get_copernicus_dem(s2_path, out_dir)
-    return dem_path
+#     return extracted_paths
 
 def clip_dem(dem_path, target_raster_path, project_dir):
     reproject_from_raster(dem_path, target_raster_path, -9999, project_dir, xRes=30.0, yRes=30.0)
     return dem_path
 
 def process_dem(dem_path, out_dir, return_type='list'):
-    dem_path = Path(dem_path)
-    
+    dem_path = Path(dem_path)    
     slope_path = slope(dem_path, out_dir)
-
-    grid, fa_path = flow_accumulation(dem_path, out_dir, out_name=f"FA.tif")
-
-    hand_path = hand(grid, dem_path, fa_path, out_dir, out_name=f"HAND.tif")
-
-    twi_path = twi(dem_path, fa_path, out_dir, out_name=f"TWI.tif")
+    fa_path = flow_accumulation(dem_path, out_dir, out_name="FA.tif")
+    hand_path = hand(dem_path, out_dir, out_name="HAND.tif")
+    twi_path = twi(dem_path, fa_path, out_dir, out_name="TWI.tif")
 
     if return_type == 'dict':
         paths_dict = {"dem": dem_path, 
@@ -111,10 +91,11 @@ def process_dem(dem_path, out_dir, return_type='list'):
                         "hand": hand_path, 
                         "twi": twi_path}
         return paths_dict
+
     if return_type == 'list':
         paths_list = [dem_path, slope_path, fa_path, hand_path, twi_path]
         return paths_list
-    
+
     return None
 
 def convert(s2_paths, folder):
@@ -167,14 +148,14 @@ def tile(*raster_paths, tile_size=244, data_type="stacked"):
     tile_dir = singleraster_tiling(tile_size, *raster_paths, data_type=data_type)
     return tile_dir
 
-def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delete_all=True):
+def run_default_preprocessing(project_dir, s2_zip_path, extract_list=None, delete_all=True):
     Mtic, mtic = time.time(), time.time()
     
     print(f"o---o---o---o---o---o---o\tNot Started \t\t\t(0/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
-    if extract_dict is None:
-        extract_dict = EXTRACT_DICT
+    if extract_list is None:
+        extract_list = EXTRACT_LIST
 
-    s2_paths_list = extract(s2_zip_path, project_dir, extract_dict)
+    s2_paths_list = extract(s2_zip_path, project_dir, extract_list)
     target_raster_path = s2_paths_list[0]
     print(f"•---o---o---o---o---o---o\tSentinel bands extracted \t(1/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
     mtic=time.time()
@@ -190,8 +171,8 @@ def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delet
     print(f"•---•---•---•---o---o---o\tDEM processed \t\t\t(4/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
     mtic=time.time()
 
-    # reprojected_raster_paths = reproject(*all_paths_list, target_raster_path = target_raster_path)
-    reprojected_raster_paths = all_paths_list
+    reprojected_raster_paths = reproject(*all_paths_list, target_raster_path = target_raster_path)
+    # reprojected_raster_paths = all_paths_list
     print(f"•---•---•---•---•---o---o\tReprojections completed \t(5/7 - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
     mtic=time.time()
 
@@ -214,14 +195,15 @@ def run_default_preprocessing(project_dir, s2_zip_path, extract_dict=None, delet
 
     return tile_dir
 
-def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_dict=None, set_type='inference', delete_all=True):
+def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_list=None, set_type='inference', delete_all=True):
     Mtic, mtic = time.time(), time.time()
     num_images, num_steps = len(s2_zip_paths), 7*len(s2_zip_paths)+2
     project_dir = Path(project_dir)
 
     print(f"o---o---o---o---o---o---o\tNot Started \t\t\t(0/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
-    if extract_dict is None:
-        extract_dict = EXTRACT_DICT
+    if extract_list is None:
+        # extract_dict = EXTRACT_DICT
+        extract_list = EXTRACT_LIST
 
     s2_list, dem_list, extract_folder_list = [], [], []
     stacked_training_s2_paths, stacked_training_dem_paths, stacked_inference_paths = [], [], []
@@ -230,7 +212,7 @@ def run_multiple_default_preprocessing(project_dir, s2_zip_paths, extract_dict=N
         step_folder.mkdir(parents=True, exist_ok=True)
         extract_folder_list.append(step_folder)
         
-        step_s2_list = extract(s2_zip_path, step_folder, extract_dict)
+        step_s2_list = extract(s2_zip_path, step_folder, extract_list)
         print(f"•---o---o---o---o---o---o\tSentinel bands extracted \t({7*k+1}/{num_steps} - {time.time()-mtic:.2f}s|{time.time()-Mtic:.2f}s)")
         mtic=time.time()
 
