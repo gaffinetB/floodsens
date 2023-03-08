@@ -119,8 +119,8 @@ class Event():
         with open(yaml_path, "r") as istream:
             data = yaml.load(istream, yaml.Loader)
 
-        model_data = data.pop("model")
-        model = FloodsensModel(**model_data)
-        data["model"] = model
+        # model_data = data.pop("model")
+        # model = FloodsensModel(**model_data)
+        # data["model"] = model
 
         return cls(**data)

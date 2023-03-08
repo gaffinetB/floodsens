@@ -1,5 +1,4 @@
 import re
-import torch
 import shutil
 import itertools
 import zipfile
@@ -30,26 +29,28 @@ def extract(zip_path, extract_dir, extract_list, cleanup=True):
 
     extractable_files = []
     for file in zip_file.namelist():
+
         match = list(filter(lambda x: all([x[0][0] in x[1], x[0][1] in x[1]]), zip(extract_list, itertools.repeat(file))))
-        
+
         if len(match) == 0:
             continue
         if len(match) == 1:
             extractable_files.append(match[0][1])
         if len(match) > 1:
             raise ValueError(f"Filtering zip archive failed. Unexpected match ambiguity: {match}")
-        
+
     extracted_files = []
     for extractable_file in extractable_files:
         zip_file.extract(extractable_file, extract_dir)
         extractable_file = Path(extractable_file)
         extracted_file = extract_dir/extractable_file.name
         (extract_dir/extractable_file).rename(extracted_file)
-        
+
         extracted_files.append(extracted_file)
-        
-    if cleanup: shutil.rmtree(extract_dir/f"{zip_path.stem}.SAFE")
-    
+
+    if cleanup: 
+        shutil.rmtree(extract_dir/f"{zip_path.stem}.SAFE")
+
     extracted_files.sort()
     return extracted_files
 

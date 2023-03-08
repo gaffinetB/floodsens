@@ -1,4 +1,4 @@
-
+"""Default list for extracting bands from Sentinel-2 images."""
 EXTRACT_DICT = {"10m": ["B02","B03","B04","B08"],
                 "20m": ["B05","B06","B07","B11","B12"]}
 
