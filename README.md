@@ -10,9 +10,19 @@ https://services.rss-hydro.lu/nextcloud/index.php/s/5kCMGB8SDQsgxMd.
 
 ## Installation & Prerequisites
 
+### Without Docker
+
+Installing GDAL is different for Windows and Linux users, please consult the official documentation for details.
+
 1. **GDAL** is required. Consult https://gdal.org/index.html to download and install it.
 1. Install floodsens with pip using command line `pip install floodsens`
 1. Sentinel-2 images are required. (Available with free registration on https://scihub.copernicus.eu/)
+
+### With Docker
+
+For VSCode user a `.devcontainer` is provided. You can copy it from the repository for use. Assuming you have Docker ready on your system you can install the `Dev Containers` extension for VSCode and build the container via `Dev Containers: Open Folder in Container...` in VSCode.
+
+The container provides an environment with `Ubuntu 20.04`, `Python 3.8.10` and `GDAL 3.4.0`. 
 
 ## Intended Use (version `0.2.1`)
 The library has a `Project` and an `Event` class that allows users to organise their data and call the processing methods. 
