@@ -67,7 +67,7 @@ class Event():
                 return
             logger.info("Continuing FloodSENS run. This may take a while...")
 
-        preprocessed_tiles_folder = preprocessing.run_multiple_default_preprocessing(self.event_folder, self.sentinel_archives, delete_all=True, set_type="inference")
+        preprocessed_tiles_folder = preprocessing.run_default_preprocessing(self.event_folder, self.sentinel_archives, delete_all=True)
         logger.info(f"Successfully preprocessed {len(self.sentinel_archives)} Sentinel Archives.")
         inferred_tiles_folder = inference.run_inference(self.model.path, preprocessed_tiles_folder, self.model.channels, cuda=False, sigmoid_end=True)
         logger.info(f"Successfully ran inference on {len(self.sentinel_archives)} Sentinel Archives.")
@@ -90,7 +90,7 @@ class Event():
         raise NotImplementedError("This feature has not been implemented yet.")
 
     def generate_training_data(self, label_path=None):
-        preprocessed_tiles_folder = preprocessing.run_multiple_default_preprocessing(self.event_folder, [self.sentinel_archives], delete_all=True, set_type="inference")
+        preprocessed_tiles_folder = preprocessing.run_default_preprocessing(self.event_folder, [self.sentinel_archives], delete_all=True)
         logger.info(f"Successfully preprocessed {len(self.sentinel_archives)} Sentinel Archives. Tiles saved to {preprocessed_tiles_folder}.")
 
         if label_path is not None:
@@ -112,7 +112,7 @@ class Event():
 
     @classmethod
     def from_yaml(cls, yaml_path):
-        """Restor an Event instance from a YAML file.
+        """Restore an Event instance from a YAML file.
 
         Arguments:
             yaml_path {str, Path} -- Path to the YAML file."""

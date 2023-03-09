@@ -1,0 +1,15 @@
+notebook
+pylint
+autopep8
+rasterio
+boto3
+botocore
+geopandas
+pyproj
+pysheds
+numpy
+torch
+torchvision
+demloader==0.1.5
+tifffile
+pandas
