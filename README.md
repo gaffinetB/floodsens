@@ -14,7 +14,7 @@ https://services.rss-hydro.lu/nextcloud/index.php/s/5kCMGB8SDQsgxMd.
 1. Install floodsens with pip using command line `pip install floodsens`
 1. Sentinel-2 images are required. (Available with free registration on https://scihub.copernicus.eu/)
 
-## Intended Use (version `0.2.0`)
+## Intended Use (version `0.2.1`)
 The library has a `Project` and an `Event` class that allows users to organise their data and call the processing methods. 
 
 ### Using only `Event` class
