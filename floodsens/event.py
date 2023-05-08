@@ -1,10 +1,13 @@
 """The event module contains the Event class which represents a single event.
 All processing methods are called from the Event class."""
 from pathlib import Path, PurePath
+import zipfile
 import shutil
 import yaml
 import floodsens.preprocessing as preprocessing
+import floodsens.label as label
 import floodsens.inference as inference
+from floodsens._tile import singleband_tiling
 from floodsens.logger import logger
 from floodsens.model import FloodsensModel
 
@@ -90,15 +93,39 @@ class Event():
         raise NotImplementedError("This feature has not been implemented yet.")
 
     def generate_training_data(self, label_path=None):
-        preprocessed_tiles_folder = preprocessing.run_default_preprocessing(self.event_folder, [self.sentinel_archives], delete_all=True)
+        preprocessed_tiles_folder = preprocessing.run_default_preprocessing(self.event_folder, self.sentinel_archives, delete_all=True)
         logger.info(f"Successfully preprocessed {len(self.sentinel_archives)} Sentinel Archives. Tiles saved to {preprocessed_tiles_folder}.")
 
-        if label_path is not None:
-            label_path = Path(label_path)
-            # TODO Rasterize, Binarize, Tile
-            raise NotImplementedError("This feature has not been implemented yet.")
+        if label_path is None:
+            logger.info(f"No labels provided. Please do not use validation functionalities.")
+            return preprocessed_tiles_folder
 
-        return preprocessed_tiles_folder
+        label_path = Path(label_path)
+        if label_path.suffix == ".shp":
+
+            raster_paths = []
+            for zip_archive in self.sentinel_archives:
+                archive = zipfile.ZipFile(zip_archive, "r")
+                file_list = archive.namelist()
+                archive.close()
+                tci_path = [x for x in file_list if ("10m" in x and "TCI" in x)][0]
+                raster_paths.append("/vsizip/%s/%s" % (zip_archive, tci_path))
+
+            label_raster_path = self.event_folder/f"{label_path.stem}.tif"
+            label_path = label.rasterize(label_path, raster_paths, label_raster_path)
+
+        if label_path.suffix == ".tif":
+            out_path = self.event_folder/"label_binary.tif"
+            label_binary_path = label.binarize(label_path, out_path)
+        else:
+            logger.warning("Unspecified error encountered. Please do not use validation functionalities.")
+            return preprocessed_tiles_folder
+
+        #NOTE Binary Labels still looking correct. Error in tiling.
+        #TODO Singleband_tiling not working! Large files with bad content
+        label_tiles_folder = singleband_tiling(244, label_binary_path, data_type="label")
+
+        return preprocessed_tiles_folder, label_tiles_folder
 
     def save_to_yaml(self):
         """Save the event to a YAML file. This file can be used to recreate the event instance.

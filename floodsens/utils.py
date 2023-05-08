@@ -49,7 +49,11 @@ def extract(zip_path, extract_dir, extract_list, cleanup=True):
         extracted_files.append(extracted_file)
 
     if cleanup: 
-        shutil.rmtree(extract_dir/f"{zip_path.stem}.SAFE")
+        try:
+            shutil.rmtree(extract_dir/f"{zip_path.stem}.SAFE")
+        except FileNotFoundError:
+            logger.warning(f"Folder for clean up does no exist: {extract_dir/zip_path.stem}.SAFE")
+
 
     extracted_files.sort()
     return extracted_files
